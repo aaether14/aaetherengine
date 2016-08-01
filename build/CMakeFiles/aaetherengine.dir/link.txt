@@ -1,1 +1,1 @@
-/usr/bin/c++       CMakeFiles/aaetherengine.dir/main.cpp.o  -o aaetherengine -rdynamic -lGL -lX11 
+/usr/bin/c++       CMakeFiles/aaetherengine.dir/main.c.o  -o aaetherengine -rdynamic -lGL -lX11 

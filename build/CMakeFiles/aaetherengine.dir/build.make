@@ -49,37 +49,37 @@ include CMakeFiles/aaetherengine.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/aaetherengine.dir/flags.make
 
-CMakeFiles/aaetherengine.dir/main.cpp.o: CMakeFiles/aaetherengine.dir/flags.make
-CMakeFiles/aaetherengine.dir/main.cpp.o: ../main.cpp
+CMakeFiles/aaetherengine.dir/main.c.o: CMakeFiles/aaetherengine.dir/flags.make
+CMakeFiles/aaetherengine.dir/main.c.o: ../main.c
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/aaether/Desktop/Work/aaetherengine/build/CMakeFiles $(CMAKE_PROGRESS_1)
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building CXX object CMakeFiles/aaetherengine.dir/main.cpp.o"
-	/usr/bin/c++   $(CXX_DEFINES) $(CXX_FLAGS) -o CMakeFiles/aaetherengine.dir/main.cpp.o -c /home/aaether/Desktop/Work/aaetherengine/main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building CXX object CMakeFiles/aaetherengine.dir/main.c.o"
+	/usr/bin/c++   $(CXX_DEFINES) $(CXX_FLAGS) -o CMakeFiles/aaetherengine.dir/main.c.o -c /home/aaether/Desktop/Work/aaetherengine/main.c
 
-CMakeFiles/aaetherengine.dir/main.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/aaetherengine.dir/main.cpp.i"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -E /home/aaether/Desktop/Work/aaetherengine/main.cpp > CMakeFiles/aaetherengine.dir/main.cpp.i
+CMakeFiles/aaetherengine.dir/main.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/aaetherengine.dir/main.c.i"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -E /home/aaether/Desktop/Work/aaetherengine/main.c > CMakeFiles/aaetherengine.dir/main.c.i
 
-CMakeFiles/aaetherengine.dir/main.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/aaetherengine.dir/main.cpp.s"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -S /home/aaether/Desktop/Work/aaetherengine/main.cpp -o CMakeFiles/aaetherengine.dir/main.cpp.s
+CMakeFiles/aaetherengine.dir/main.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/aaetherengine.dir/main.c.s"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -S /home/aaether/Desktop/Work/aaetherengine/main.c -o CMakeFiles/aaetherengine.dir/main.c.s
 
-CMakeFiles/aaetherengine.dir/main.cpp.o.requires:
-.PHONY : CMakeFiles/aaetherengine.dir/main.cpp.o.requires
+CMakeFiles/aaetherengine.dir/main.c.o.requires:
+.PHONY : CMakeFiles/aaetherengine.dir/main.c.o.requires
 
-CMakeFiles/aaetherengine.dir/main.cpp.o.provides: CMakeFiles/aaetherengine.dir/main.cpp.o.requires
-	$(MAKE) -f CMakeFiles/aaetherengine.dir/build.make CMakeFiles/aaetherengine.dir/main.cpp.o.provides.build
-.PHONY : CMakeFiles/aaetherengine.dir/main.cpp.o.provides
+CMakeFiles/aaetherengine.dir/main.c.o.provides: CMakeFiles/aaetherengine.dir/main.c.o.requires
+	$(MAKE) -f CMakeFiles/aaetherengine.dir/build.make CMakeFiles/aaetherengine.dir/main.c.o.provides.build
+.PHONY : CMakeFiles/aaetherengine.dir/main.c.o.provides
 
-CMakeFiles/aaetherengine.dir/main.cpp.o.provides.build: CMakeFiles/aaetherengine.dir/main.cpp.o
+CMakeFiles/aaetherengine.dir/main.c.o.provides.build: CMakeFiles/aaetherengine.dir/main.c.o
 
 # Object files for target aaetherengine
 aaetherengine_OBJECTS = \
-"CMakeFiles/aaetherengine.dir/main.cpp.o"
+"CMakeFiles/aaetherengine.dir/main.c.o"
 
 # External object files for target aaetherengine
 aaetherengine_EXTERNAL_OBJECTS =
 
-aaetherengine: CMakeFiles/aaetherengine.dir/main.cpp.o
+aaetherengine: CMakeFiles/aaetherengine.dir/main.c.o
 aaetherengine: CMakeFiles/aaetherengine.dir/build.make
 aaetherengine: CMakeFiles/aaetherengine.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --red --bold "Linking CXX executable aaetherengine"
@@ -89,7 +89,7 @@ aaetherengine: CMakeFiles/aaetherengine.dir/link.txt
 CMakeFiles/aaetherengine.dir/build: aaetherengine
 .PHONY : CMakeFiles/aaetherengine.dir/build
 
-CMakeFiles/aaetherengine.dir/requires: CMakeFiles/aaetherengine.dir/main.cpp.o.requires
+CMakeFiles/aaetherengine.dir/requires: CMakeFiles/aaetherengine.dir/main.c.o.requires
 .PHONY : CMakeFiles/aaetherengine.dir/requires
 
 CMakeFiles/aaetherengine.dir/clean:

@@ -6,7 +6,12 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 find_package(aae_utils REQUIRED)
 
 
+#add all sources file here
 aae_add_source(main.c)
+#-------------------------
+
+
+set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 

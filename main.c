@@ -1,9 +1,8 @@
 #include <stdio.h>
-#include "aae_linked_list.h"
-//#include "test.h"
+#include "aae_utils/aae_linked_list.h"
 
 
-AAE_DEFINE_LINKED_LIST(double)
+AAE_DEFINE_LINKED_LIST(float)
 
 
 
@@ -15,21 +14,21 @@ int main(
 {
 
 
-	aae_LinkedList(double) * pList = aae_NewLinkedList(double);
-	aae_LinkedListPushBack(double, pList, 5.32); 
-	aae_LinkedListPushBack(double, pList, 3.14); 
-	aae_LinkedListPushFront(double,pList, 2452141.323);
-	aae_LinkedListPushBack(double, pList, 1.72);
-	aae_LinkedListPushBack(double, pList, 213213.23);
-	aae_LinkedListPushFront(double, pList, 3.152);
+	aae_LinkedList(float) * pList = aae_NewLinkedList(float);
+	aae_LinkedListPushBack(float, pList, 5.32); 
+	aae_LinkedListPushBack(float, pList, 3.14); 
+	aae_LinkedListPushFront(float,pList, 2452141.323);
+	aae_LinkedListPushBack(float, pList, 1.72);
+	aae_LinkedListPushBack(float, pList, 213213.23);
+	aae_LinkedListPushFront(float, pList, 3.152);
 
 
-	for (aae_LinkedListElement(double) *it = pList->m_first; it!= NULL; it = it->m_next)
-	printf("%2.3f\n", it->m_data);
+	for (pList->m_it = pList->m_first; pList->m_it!= NULL; pList->m_it = pList->m_it->m_next)
+	printf("%2.3f\n", pList->m_it->m_data);
 	printf("There are %lu members in the list.\n", pList->m_size);
 
 
-	aae_LinkedListFreeNodes(double, pList);
+	aae_LinkedListFreeNodes(float, pList);
 	free(pList);
 	pList = NULL;
 

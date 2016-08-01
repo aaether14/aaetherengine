@@ -1,5 +1,5 @@
 FILE(REMOVE_RECURSE
-  "CMakeFiles/aaetherengine.dir/main.cpp.o"
+  "CMakeFiles/aaetherengine.dir/main.c.o"
   "aaetherengine.pdb"
   "aaetherengine"
 )
