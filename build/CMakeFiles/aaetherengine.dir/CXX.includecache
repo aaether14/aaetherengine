@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/aaether/Desktop/Work/aaetherengine/main.cpp
+stdio.h
+-
+X11/X.h
+-
+X11/Xlib.h
+-
+GL/gl.h
+-
+GL/glx.h
+-
+
