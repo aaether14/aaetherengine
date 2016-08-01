@@ -17,7 +17,7 @@ int main(
 	aae_LinkedList(float) * pList = aae_NewLinkedList(float);
 	aae_LinkedListPushBack(float, pList, 5.32); 
 	aae_LinkedListPushBack(float, pList, 3.14); 
-	aae_LinkedListPushFront(float,pList, 2452141.323);
+        aae_LinkedListPushFront(float,pList, 24521.15);
 	aae_LinkedListPushBack(float, pList, 1.72);
 	aae_LinkedListPushBack(float, pList, 213213.23);
 	aae_LinkedListPushFront(float, pList, 3.152);
