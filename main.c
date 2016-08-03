@@ -3,7 +3,7 @@
 
 
 #define AAE_LINKED_LIST_TYPE float
-#include "aae_utils/aae_linked_list.h"
+#include "aae_utils/aae_linked_list.def"
 
 
 
@@ -21,8 +21,10 @@ int main(
 	aae_LinkedListPushBack(float, pList, 1241.32);
 
 
-	for (pList->m_it = pList->m_first; pList->m_it != NULL; pList->m_it = pList->m_it->m_next)
-	printf("%2.2f\n", pList->m_it->m_data);
+	aae_LinkedListForEach(pList)
+	{
+		printf("%2.2f\n", pList->m_it->m_data);
+	}
 
 
 	free(pList);

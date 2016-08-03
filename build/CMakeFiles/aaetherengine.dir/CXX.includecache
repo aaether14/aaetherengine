@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/aaether/Desktop/Work/aaetherengine/aae_utils/aae_linked_list.h
+/home/aaether/Desktop/Work/aaetherengine/aae_utils/aae_linked_list.def
 aae_types.h
 /home/aaether/Desktop/Work/aaetherengine/aae_utils/aae_types.h
 malloc.h
@@ -17,6 +17,6 @@ malloc.h
 /home/aaether/Desktop/Work/aaetherengine/main.c
 stdio.h
 -
-aae_utils/aae_linked_list.h
-/home/aaether/Desktop/Work/aaetherengine/aae_utils/aae_linked_list.h
+aae_utils/aae_linked_list.def
+/home/aaether/Desktop/Work/aaetherengine/aae_utils/aae_linked_list.def
 
