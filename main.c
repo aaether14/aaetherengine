@@ -1,9 +1,5 @@
 #include <stdio.h>
-
-
-
-#define AAE_LINKED_LIST_TYPE float
-#include "aae_utils/aae_linked_list.def"
+#include "aae_utils/aae_linked_list_type_generation.h"
 
 
 
@@ -19,6 +15,7 @@ int main(
 	aae_LinkedListPushBack(float, pList, 2.25);
 	aae_LinkedListPushBack(float, pList, 3.14);
 	aae_LinkedListPushBack(float, pList, 1241.32);
+	aae_LinkedListPushBack(float, pList, 123.321);	
 
 
 	aae_LinkedListForEach(pList)
@@ -27,6 +24,7 @@ int main(
 	}
 
 
+	aae_LinkedListFreeNodes(float, pList);	
 	free(pList);
 	pList = NULL;
 

@@ -48,29 +48,27 @@ typedef enum
 /**
 *Indirection is used in order to achieve defined token concatenation
 */
-#define TOKENPASTE(x, y) x##y
-#define INDIRECT_TOKENPASTE(x, y) TOKENPASTE(x, y)
 #define __AAE_LINKED_LIST_PREFIX(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__linked_list, NAME), AAE_LINKED_LIST_TYPE)
 #define __AAE_LINKED_LIST_PREFIX_TD(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__td_linked_list, NAME), AAE_LINKED_LIST_TYPE)
 
 
 
 
-	typedef struct __AAE_LINKED_LIST_PREFIX(_elem)
+	typedef struct __AAE_LINKED_LIST_PREFIX(_elem) /* __linked_list_elem##AAE_LINKED_LIST_TYPE -eg.__linked_list_elemfloat */
 	{
 		AAE_LINKED_LIST_TYPE m_data;
 		__AAE_LINKED_LIST_PREFIX(_elem) * m_next;
-	} __AAE_LINKED_LIST_PREFIX_TD(_elem);
+	} __AAE_LINKED_LIST_PREFIX_TD(_elem); /* __td_linked_list_elem##AAE_LINKED_LIST_TYPE -eg. __td_linked_list_elemfloat */
 
 
 
-	typedef struct __AAE_LINKED_LIST_PREFIX(_)
+	typedef struct __AAE_LINKED_LIST_PREFIX(_) /* __linked_list_##AAE_LINKED_LIST_TYPE -eg. __linked_list_float */
 	{
 		aae_size_t m_size;
 		__AAE_LINKED_LIST_PREFIX_TD(_elem) * m_first;
 		__AAE_LINKED_LIST_PREFIX_TD(_elem) * m_last;
 		__AAE_LINKED_LIST_PREFIX_TD(_elem) * m_it;
-	} __AAE_LINKED_LIST_PREFIX_TD(_);
+	} __AAE_LINKED_LIST_PREFIX_TD(_); /* __td_linked_list_AAE_LINKED_LIST_TYPE -eg. __td_linked_list_float */
 
 
 
@@ -106,6 +104,27 @@ typedef enum
 	}
 
 
+
+	void __AAE_LINKED_LIST_PREFIX(_free_nodes)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList)
+	{
+
+		pList->m_it = pList->m_first;
+		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pTempElem = NULL;
+
+		while (pList->m_it != NULL)
+		{
+			
+			pTempElem = pList->m_it;
+			pList->m_it = pList->m_it->m_next;
+			free(pTempElem);
+			
+		}
+
+		pList->m_first = pList->m_last = pList->m_it = NULL;		
+
+	}
+
+
 /**
 *Types
 */
@@ -125,6 +144,7 @@ m_size - the size of the list
 */
 #define aae_LinkedListPushBack(TYPE, list, elem)		__linked_list_push_back##TYPE(list, elem)
 #define aae_LinkedListNewList(TYPE)				__linked_list_new_list##TYPE()
+#define aae_LinkedListFreeNodes(TYPE, list)			__linked_list_free_nodes##TYPE(list)
 #define aae_LinkedListForEach(list)				for (list->m_it = list->m_first; list->m_it != NULL; list->m_it = list->m_it->m_next)
 
 
