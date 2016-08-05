@@ -5,5 +5,5 @@
 	git add .
 	printf "Commiting chagnes!\n"
 	git commit -m "$1"
-	printf "Pushing commit to outside source!\n"
+	printf "Pushing commit to remote source!\n"
 	git push
