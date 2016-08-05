@@ -14,12 +14,12 @@ Safe types:
 
 
 
-
-
 #ifndef AAE_LINKED_LIST_DEF
 #define AAE_LINKED_LIST_DEF
+#include "aae_defines.h"
 #include "aae_types.h"
 #include <malloc.h>
+
 
 
 /**
@@ -79,7 +79,7 @@ typedef enum
 
 
 		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pNewElem = (__AAE_LINKED_LIST_PREFIX_TD(_elem)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX_TD(_elem)));
-		if (!pNewElem) return AAE_LINKED_LIST_SUCCESS;
+		if (!pNewElem) return AAE_LINKED_LIST_ALLOCATION_ERROR;
 
 
 		pNewElem->m_next = NULL; pNewElem->m_data = tValue;
@@ -90,6 +90,29 @@ typedef enum
 		pList->m_size++;
 		return AAE_LINKED_LIST_SUCCESS;
 	}
+
+
+
+	AAE_LINKED_LIST_RETURN_VALUES __AAE_LINKED_LIST_PREFIX(_push_front)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList, AAE_LINKED_LIST_TYPE tValue)
+	{
+
+		if (!pList) return AAE_LINKED_LIST_INVALID_LIST;
+
+
+		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pNewElem = (__AAE_LINKED_LIST_PREFIX_TD(_elem)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX_TD(_elem)));
+		if (!pNewElem) return AAE_LINKED_LIST_SUCCESS;
+
+	
+		pNewElem->m_next = NULL; pNewElem->m_data = tValue;
+		if (!pList->m_first) pList->m_first = pList->m_last = pNewElem;
+		else { pNewElem->m_next = pList->m_first; pList->m_first = pNewElem; }
+
+		
+		pList->m_size++;
+		return AAE_LINKED_LIST_SUCCESS;
+
+	}
+
 
 
 
@@ -108,6 +131,7 @@ typedef enum
 	void __AAE_LINKED_LIST_PREFIX(_free_nodes)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList)
 	{
 
+		if (!pList) return;
 		pList->m_it = pList->m_first;
 		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pTempElem = NULL;
 
@@ -123,6 +147,22 @@ typedef enum
 		pList->m_first = pList->m_last = pList->m_it = NULL;		
 
 	}
+
+
+	__AAE_LINKED_LIST_PREFIX_TD(_elem) * __AAE_LINKED_LIST_PREFIX(_pop_front)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList)
+	{
+		
+		if (!pList) return NULL;
+		if (!pList->m_first) return NULL;
+
+		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pPoppedElem = pList->m_first;
+		pList->m_first = pList->m_first->m_next;
+
+		pList->m_size--;
+		return pPoppedElem;
+		
+	}
+	
 
 
 /**
@@ -143,6 +183,9 @@ m_size - the size of the list
 *Functions
 */
 #define aae_LinkedListPushBack(TYPE, list, elem)		__linked_list_push_back##TYPE(list, elem)
+#define aae_LinkedListPushFront(TYPE, list, elem)		__linked_list_push_front##TYPE(list, elem)
+#define aae_LinkedListPopFront(TYPE, list)			__linked_list_pop_front##TYPE(list)
+#define aae_LinkedListFreePopFront(TYPE, list)			free(__linked_list_pop_front##TYPE(list)) /* free poped element */
 #define aae_LinkedListNewList(TYPE)				__linked_list_new_list##TYPE()
 #define aae_LinkedListFreeNodes(TYPE, list)			__linked_list_free_nodes##TYPE(list)
 #define aae_LinkedListForEach(list)				for (list->m_it = list->m_first; list->m_it != NULL; list->m_it = list->m_it->m_next)

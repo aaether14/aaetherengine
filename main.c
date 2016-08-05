@@ -12,11 +12,12 @@ int main(
 
 	
 	aae_LinkedList(float) * pList = aae_LinkedListNewList(float);
-	aae_LinkedListPushBack(float, pList, 2.25);
+	aae_LinkedListPushFront(float, pList, 2.25);
 	aae_LinkedListPushBack(float, pList, 3.14);
-	aae_LinkedListPushBack(float, pList, 1241.32);
+	aae_LinkedListPushFront(float, pList, 1241.32);
 	aae_LinkedListPushBack(float, pList, 123.321);	
 
+	
 
 	aae_LinkedListForEach(pList)
 	{
