@@ -102,12 +102,12 @@ typedef enum
 		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pNewElem = (__AAE_LINKED_LIST_PREFIX_TD(_elem)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX_TD(_elem)));
 		if (!pNewElem) return AAE_LINKED_LIST_SUCCESS;
 
-	
+
 		pNewElem->m_next = NULL; pNewElem->m_data = tValue;
 		if (!pList->m_first) pList->m_first = pList->m_last = pNewElem;
 		else { pNewElem->m_next = pList->m_first; pList->m_first = pNewElem; }
 
-		
+
 		pList->m_size++;
 		return AAE_LINKED_LIST_SUCCESS;
 
@@ -118,11 +118,11 @@ typedef enum
 
 	__AAE_LINKED_LIST_PREFIX_TD(_) * __AAE_LINKED_LIST_PREFIX(_new_list)()
 	{
-		
+
 		__AAE_LINKED_LIST_PREFIX_TD(_) * pNewList = (__AAE_LINKED_LIST_PREFIX_TD(_)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX_TD(_)));
-		pNewList->m_first = pNewList->m_last = pNewList->m_it = NULL;									
-		pNewList->m_size = 0;														
-		return pNewList; 	
+		pNewList->m_first = pNewList->m_last = pNewList->m_it = NULL;
+		pNewList->m_size = 0;
+		return pNewList;
 
 	}
 
@@ -137,21 +137,21 @@ typedef enum
 
 		while (pList->m_it != NULL)
 		{
-			
+
 			pTempElem = pList->m_it;
 			pList->m_it = pList->m_it->m_next;
 			free(pTempElem);
-			
+
 		}
 
-		pList->m_first = pList->m_last = pList->m_it = NULL;		
+		pList->m_first = pList->m_last = pList->m_it = NULL;
 
 	}
 
 
 	__AAE_LINKED_LIST_PREFIX_TD(_elem) * __AAE_LINKED_LIST_PREFIX(_pop_front)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList)
 	{
-		
+
 		if (!pList) return NULL;
 		if (!pList->m_first) return NULL;
 
@@ -160,9 +160,9 @@ typedef enum
 
 		pList->m_size--;
 		return pPoppedElem;
-		
+
 	}
-	
+
 
 
 /**

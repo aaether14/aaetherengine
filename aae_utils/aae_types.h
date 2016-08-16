@@ -3,7 +3,7 @@
 
 
 typedef long int i64;
-typedef unsigned long int aae_size_t;
+typedef size_t aae_size_t;
 
 
 

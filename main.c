@@ -12,17 +12,9 @@ int main(
 
 	
 	aae_LinkedList(float) * pList = aae_LinkedListNewList(float);
-	aae_LinkedListPushFront(float, pList, 2.25);
-	aae_LinkedListPushBack(float, pList, 3.14);
-	aae_LinkedListPushFront(float, pList, 1241.32);
-	aae_LinkedListPushBack(float, pList, 123.321);	
+	for (int i = 0; i < 1000000; i++)
+	aae_LinkedListPushFront(float, pList, float(i));
 
-	
-
-	aae_LinkedListForEach(pList)
-	{
-		printf("%2.2f\n", pList->m_it->m_data);
-	}
 
 
 	aae_LinkedListFreeNodes(float, pList);	
