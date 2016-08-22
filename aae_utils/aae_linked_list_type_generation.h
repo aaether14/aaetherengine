@@ -3,6 +3,7 @@
 
 
 #define AAE_LINKED_LIST_TYPE float
+#define AAE_LINKED_LIST_MEMORY_ARENA mallocator
 #include "aae_linked_list.def"
 
 
