@@ -49,66 +49,63 @@ typedef enum
 *Indirection is used in order to achieve defined token concatenation
 */
 #define __AAE_LINKED_LIST_PREFIX(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__linked_list, NAME), AAE_LINKED_LIST_TYPE)
-#define __AAE_LINKED_LIST_PREFIX_TD(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__td_linked_list, NAME), AAE_LINKED_LIST_TYPE)
 
 
 
-
-	typedef struct __AAE_LINKED_LIST_PREFIX(_elem) /* __linked_list_elem##AAE_LINKED_LIST_TYPE -eg.__linked_list_elemfloat */
+	struct __AAE_LINKED_LIST_PREFIX(_elem) /* __linked_list_elem##AAE_LINKED_LIST_TYPE -eg.__linked_list_elemfloat */
 	{
 		AAE_LINKED_LIST_TYPE m_data;
 		__AAE_LINKED_LIST_PREFIX(_elem) * m_next;
-	} __AAE_LINKED_LIST_PREFIX_TD(_elem); /* __td_linked_list_elem##AAE_LINKED_LIST_TYPE -eg. __td_linked_list_elemfloat */
+	};
 
 
-
-	typedef struct __AAE_LINKED_LIST_PREFIX(_) /* __linked_list_##AAE_LINKED_LIST_TYPE -eg. __linked_list_float */
+	struct __AAE_LINKED_LIST_PREFIX(_) /* __linked_list_##AAE_LINKED_LIST_TYPE -eg. __linked_list_float */
 	{
+		//member data
 		aae_size_t m_size;
-		__AAE_LINKED_LIST_PREFIX_TD(_elem) * m_first;
-		__AAE_LINKED_LIST_PREFIX_TD(_elem) * m_last;
-		__AAE_LINKED_LIST_PREFIX_TD(_elem) * m_it;
-	} __AAE_LINKED_LIST_PREFIX_TD(_); /* __td_linked_list_AAE_LINKED_LIST_TYPE -eg. __td_linked_list_float */
+		__AAE_LINKED_LIST_PREFIX(_elem) * m_first;
+		__AAE_LINKED_LIST_PREFIX(_elem) * m_last;
+		__AAE_LINKED_LIST_PREFIX(_elem) * m_it;
+
+		//member functions
+		AAE_LINKED_LIST_RETURN_VALUES push_back(AAE_LINKED_LIST_TYPE tValue);
+		AAE_LINKED_LIST_RETURN_VALUES push_front(AAE_LINKED_LIST_TYPE tValue);
 
 
+	};
 
-	AAE_LINKED_LIST_RETURN_VALUES __AAE_LINKED_LIST_PREFIX(_push_back)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList, AAE_LINKED_LIST_TYPE tValue)
+
+	AAE_LINKED_LIST_RETURN_VALUES __AAE_LINKED_LIST_PREFIX(_)::push_back(AAE_LINKED_LIST_TYPE tValue)
 	{
 
-		if (!pList) return AAE_LINKED_LIST_INVALID_LIST;
-
-
-		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pNewElem = (__AAE_LINKED_LIST_PREFIX_TD(_elem)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX_TD(_elem)));
+		__AAE_LINKED_LIST_PREFIX(_elem) * pNewElem = (__AAE_LINKED_LIST_PREFIX(_elem)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX(_elem)));
 		if (!pNewElem) return AAE_LINKED_LIST_ALLOCATION_ERROR;
 
 
 		pNewElem->m_next = NULL; pNewElem->m_data = tValue;
-		if (!pList->m_first) pList->m_first = pList->m_last = pNewElem;
-		else { pList->m_last->m_next = pNewElem; pList->m_last = pNewElem; }
+		if (!this->m_first) this->m_first = this->m_last = pNewElem;
+		else { this->m_last->m_next = pNewElem; this->m_last = pNewElem; }
 
 
-		pList->m_size++;
+		this->m_size++;
 		return AAE_LINKED_LIST_SUCCESS;
 	}
 
 
 
-	AAE_LINKED_LIST_RETURN_VALUES __AAE_LINKED_LIST_PREFIX(_push_front)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList, AAE_LINKED_LIST_TYPE tValue)
+	AAE_LINKED_LIST_RETURN_VALUES __AAE_LINKED_LIST_PREFIX(_)::push_front(AAE_LINKED_LIST_TYPE tValue)
 	{
 
-		if (!pList) return AAE_LINKED_LIST_INVALID_LIST;
-
-
-		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pNewElem = (__AAE_LINKED_LIST_PREFIX_TD(_elem)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX_TD(_elem)));
+		__AAE_LINKED_LIST_PREFIX(_elem) * pNewElem = (__AAE_LINKED_LIST_PREFIX(_elem)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX(_elem)));
 		if (!pNewElem) return AAE_LINKED_LIST_SUCCESS;
 
 
 		pNewElem->m_next = NULL; pNewElem->m_data = tValue;
-		if (!pList->m_first) pList->m_first = pList->m_last = pNewElem;
-		else { pNewElem->m_next = pList->m_first; pList->m_first = pNewElem; }
+		if (!this->m_first) this->m_first = this->m_last = pNewElem;
+		else { pNewElem->m_next = this->m_first; this->m_first = pNewElem; }
 
 
-		pList->m_size++;
+		this->m_size++;
 		return AAE_LINKED_LIST_SUCCESS;
 
 	}
@@ -116,10 +113,10 @@ typedef enum
 
 
 
-	__AAE_LINKED_LIST_PREFIX_TD(_) * __AAE_LINKED_LIST_PREFIX(_new_list)()
+	__AAE_LINKED_LIST_PREFIX(_) * __AAE_LINKED_LIST_PREFIX(_new_list)()
 	{
 
-		__AAE_LINKED_LIST_PREFIX_TD(_) * pNewList = (__AAE_LINKED_LIST_PREFIX_TD(_)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX_TD(_)));
+		__AAE_LINKED_LIST_PREFIX(_) * pNewList = (__AAE_LINKED_LIST_PREFIX(_)*)malloc(sizeof(__AAE_LINKED_LIST_PREFIX(_)));
 		pNewList->m_first = pNewList->m_last = pNewList->m_it = NULL;
 		pNewList->m_size = 0;
 		return pNewList;
@@ -128,12 +125,12 @@ typedef enum
 
 
 
-	void __AAE_LINKED_LIST_PREFIX(_free_nodes)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList)
+	void __AAE_LINKED_LIST_PREFIX(_free_nodes)(__AAE_LINKED_LIST_PREFIX(_) * pList)
 	{
 
 		if (!pList) return;
 		pList->m_it = pList->m_first;
-		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pTempElem = NULL;
+		__AAE_LINKED_LIST_PREFIX(_elem) * pTempElem = NULL;
 
 		while (pList->m_it != NULL)
 		{
@@ -149,27 +146,13 @@ typedef enum
 	}
 
 
-	__AAE_LINKED_LIST_PREFIX_TD(_elem) * __AAE_LINKED_LIST_PREFIX(_pop_front)(__AAE_LINKED_LIST_PREFIX_TD(_) * pList)
-	{
-
-		if (!pList) return NULL;
-		if (!pList->m_first) return NULL;
-
-		__AAE_LINKED_LIST_PREFIX_TD(_elem) * pPoppedElem = pList->m_first;
-		pList->m_first = pList->m_first->m_next;
-
-		pList->m_size--;
-		return pPoppedElem;
-
-	}
-
 
 
 /**
 *Types
 */
-#define aae_LinkedList(TYPE)					__td_linked_list_##TYPE //Defines a linked list of a certain TYPE
-#define aae_LinkedListElement(TYPE)				__td_linked_list_elem_##TYPE //Defines a node holding data of TYPE
+#define aae_LinkedList(TYPE)					__linked_list_##TYPE //Defines a linked list of a certain TYPE
+#define aae_LinkedListElement(TYPE)				__linked_list_elem_##TYPE //Defines a node holding data of TYPE
 /**
 List members (better don't modify this using other than defined functions):
 m_first - the first node in the list
@@ -182,9 +165,6 @@ m_size - the size of the list
 /**
 *Functions
 */
-#define aae_LinkedListPushBack(TYPE, list, elem)		__linked_list_push_back##TYPE(list, elem)
-#define aae_LinkedListPushFront(TYPE, list, elem)		__linked_list_push_front##TYPE(list, elem)
-#define aae_LinkedListPopFront(TYPE, list)			__linked_list_pop_front##TYPE(list)
 #define aae_LinkedListFreePopFront(TYPE, list)			free(__linked_list_pop_front##TYPE(list)) /* free poped element */
 #define aae_LinkedListNewList(TYPE)				__linked_list_new_list##TYPE()
 #define aae_LinkedListFreeNodes(TYPE, list)			__linked_list_free_nodes##TYPE(list)

@@ -3,6 +3,7 @@
 
 
 
+
 int main(
     int     argc,
     char   *argv[],
@@ -12,15 +13,22 @@ int main(
 
 	
 	aae_LinkedList(float) * pList = aae_LinkedListNewList(float);
-	for (int i = 0; i < 1000000; i++)
-	aae_LinkedListPushFront(float, pList, float(i));
+	pList->push_back(1.5);
+	pList->push_front(2.3);
+	pList->push_back(1.23);
+	pList->push_front(3.14);
 
+
+	aae_LinkedListForEach(pList)
+	{
+		printf("%2.2f\n", pList->m_it->m_data);
+	}
 
 
 	aae_LinkedListFreeNodes(float, pList);	
 	free(pList);
 	pList = NULL;
-
+ 
 
  
 	return 0;
