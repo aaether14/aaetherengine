@@ -1,3 +1,8 @@
+/**
+*aae_memory_allocator.h - Stefan Cristian Dinescu a.k.a Aaether - 22.08.2016
+*/
+
+
 #ifndef AAE_MEMORY_ALLOCATOR_H
 #define AAE_MEMORY_ALLOCATOR_H
 

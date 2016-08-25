@@ -16,6 +16,9 @@ set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 
+
+
 if(CMAKE_SYSTEM_NAME STREQUAL Linux)
-target_link_libraries (${PROJECT_NAME} -lGL -lX11)
+find_library(AAE_ALLOCATOR_LIB NAMES libaae_allocator.so PATHS ${CMAKE_BINARY_DIR}/lib)
+target_link_libraries (${PROJECT_NAME} -lGL -lX11 ${AAE_ALLOCATOR_LIB})
 endif(CMAKE_SYSTEM_NAME STREQUAL Linux)

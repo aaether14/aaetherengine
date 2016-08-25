@@ -25,13 +25,12 @@ Safe types:
 /**
 *Posible return values for the linked list
 */
-typedef enum
-	{	AAE_LINKED_LIST_ALLOCATION_ERROR = -2, //malloc error
-		AAE_LINKED_LIST_INVALID_LIST = -1, //invalid list pointer
+	enum AAE_LINKED_LIST_RETURN_VALUES
+	{	AAE_LINKED_LIST_ALLOCATION_ERROR = -1, //malloc error
 		AAE_LINKED_LIST_FALSE = 0,
 		AAE_LINKED_LIST_TRUE = 1,
 		AAE_LINKED_LIST_SUCCESS = 2
-	} AAE_LINKED_LIST_RETURN_VALUES;
+	};
 #endif /* AAE_LINKED_LIST_H*/
 
 
