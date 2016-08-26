@@ -9,7 +9,7 @@
 
 
 #include "aae_types.h"
-#include <malloc.h>
+#include "aae_allocator.h"
 #include <new>
 
 
@@ -17,27 +17,39 @@
 struct aae_allocator
 {
 	
-	inline void * allocate(aae_size_t size)
+	inline void * Allocate(aae_size_t size)
 	{
-		return malloc(size); 
+		return aae_malloc(size); 
 	}
 
-	inline void free(void * start)
+	inline void Free(void * start)
 	{
-		free(start);
+		aae_free(start);
 	}
 
 };
 
 
 
+
 // simple mallocator
-extern aae_allocator mallocator;
+extern aae_allocator aae_mallocator;
 
 
 
-//allocate using provided memory arena
-#define AAE_NEW(type, arena)  new (arena.allocate(sizeof(type)))type
+
+template <typename T, class Arena>
+void aae_delete(T * object, Arena & arena)
+{
+	object->~T();
+	arena.Free(object);
+}
+
+
+//allocate and deallocate using provided memory arena
+#define AAE_NEW(type, arena)  new (arena.Allocate(sizeof(type)))type
+#define AAE_DELETE(object, arena) aae_delete(object, arena)
+
 
 
 

@@ -1,47 +1,33 @@
-/* Include the brk, sbrk functions */ 
+/**
+*general purpose allocator by Stefan Cristian Dinescu aka Aaether
+*can allocate a max 4gb of memory
+*/
+
+
+
+/*
+*Include the sbrk function 
+*/ 
 #include <unistd.h> 
+#include <stdint.h>
 
 
 
 
-static int aae_alloc_has_initialized = 0;
+static uint32_t aae_alloc_has_initialized = 0;
 static void *aae_alloc_managed_memory_start;
 static void *aae_alloc_last_valid_address;
 
 
 
 
-static void aae_alloc_malloc_init()
-{ 
-
-	/*
-	*get the system break from the OS
-	*/
-	aae_alloc_last_valid_address = sbrk(0);     
-
-
-	/* 
-	*we don't have any memory to manage yet, so 
-	*just set the beginning to be last_valid_address 
-	*/  
-	aae_alloc_managed_memory_start = aae_alloc_last_valid_address;     
-
-
-	/* 
-	*done initializing
-	*/
-	aae_alloc_has_initialized = 1;
-
-}
-
-
-
 
 struct aae_alloc_mem_control_block 
 { 
-	int is_available; 
-	int size;
+	uint32_t is_available; 
+	uint32_t size;
 };
+
 
 
 
@@ -75,9 +61,37 @@ void aae_free(void *firstbyte)
 
 
 
-void *aae_malloc(long numbytes) 
+
+void *aae_malloc(uint32_t numbytes) 
 { 
 
+
+	/* 
+	*initialize if we haven't done so
+	*/
+	if(!aae_alloc_has_initialized)
+	{
+
+		/*
+		*get the system break from the OS
+		*/
+		aae_alloc_last_valid_address = sbrk(0);     
+
+
+		/* 
+		*we don't have any memory to manage yet, so 
+		*just set the beginning to be last_valid_address 
+		*/  
+		aae_alloc_managed_memory_start = aae_alloc_last_valid_address;     
+
+
+		/* 
+		*done initializing
+		*/
+		aae_alloc_has_initialized = 1;
+
+	}
+	
 
 
 	/*
@@ -96,14 +110,7 @@ void *aae_malloc(long numbytes)
 	*we find a suitable location
 	*/
 	void *memory_location = ((void*)0);  
-
-
-	/* 
-	*initialize if we haven't done so
-	*/
-	if(!aae_alloc_has_initialized)
-	aae_alloc_malloc_init();
-		 
+	 
 
 
 	/*
@@ -200,4 +207,11 @@ void *aae_malloc(long numbytes)
 	return memory_location;
 
 
+}
+
+
+
+uint32_t aae_memory_used()
+{
+	return (uint32_t)(aae_alloc_last_valid_address - aae_alloc_managed_memory_start);
 }

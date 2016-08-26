@@ -141,7 +141,7 @@ Safe types:
 
 			pTempElem = pList->m_it;
 			pList->m_it = pList->m_it->m_next;
-			free(pTempElem);
+			AAE_DELETE(pTempElem, AAE_LINKED_LIST_MEMORY_ARENA);
 
 		}
 
