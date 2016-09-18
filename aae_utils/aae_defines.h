@@ -13,4 +13,10 @@
 
 
 
+#define aae_fiz(z) for(int i = 0; i < z; i++)
+#define aae_fjz(z) for(int j = 0; j < z; j++)
+#define aae_fkz(z) for(int k = 0; k < z; k++)
+
+
+
 #endif
