@@ -1,6 +1,6 @@
 /**
-*variable allocator by Stefan Cristian Dinescu aka Aaether
-*can allocate a max 4gb of memory
+*linux general purpose allocator by Stefan Cristian Dinescu aka Aaether
+*can allocate a max 4gb of memory at once
 */
 
 
@@ -105,8 +105,11 @@ void *aae_malloc(uint32_t numbytes)
 		*/
 		last_valid_address = sbrk(0);     
 		if (last_valid_address == AAE_SBRK_ERROR)
+		{	
+			last_valid_address = AAE_NULL;
 			return AAE_NULL;
 
+		}
 		/* 
 		*we don't have any memory to manage yet, so 
 		*just set the beginning to be last_valid_address 
@@ -235,7 +238,7 @@ void *aae_malloc(uint32_t numbytes)
 
 
 
-uint32_t aae_memory_used()
+uint32_t aae_allocated_memory()
 {
 	return (uint32_t)(last_valid_address - managed_memory_start);
 }

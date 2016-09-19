@@ -14,7 +14,7 @@ extern "C" {
 
 void * aae_malloc(uint32_t numbytes);
 void aae_free(void * firstbyte);
-uint32_t aae_memory_used();
+uint32_t aae_allocated_memory();
 
 
 

@@ -2,7 +2,6 @@
 ---aae_linked_list.def - Dinescu Stefan-Cristian aka Aaether - 31.07.2016
 ----------------------------------------------------------------------
 Code generation for linked list holding TYPE data
--td stands for typedef
 -don't ever use variables, functions etc. starting with "__". Only the framework has this right.
 Features:
 -push a new node to the front of the list
@@ -57,24 +56,28 @@ Safe types:
 
 
 
-	struct __AAE_LINKED_LIST(_elem) /* __linked_list_elem##AAE_LINKED_LIST_TYPE -eg.__linked_list_elemfloat */
-	{
-		AAE_LINKED_LIST_TYPE m_data;
-		__AAE_LINKED_LIST(_elem) * m_next;
-	};
-
 
 	struct __AAE_LINKED_LIST(_) /* __linked_list_##AAE_LINKED_LIST_TYPE -eg. __linked_list_float */
 	{	
 		
+		
+		struct __elem /* a node in the linked list */
+		{
+			AAE_LINKED_LIST_TYPE m_data;
+			__elem * m_next;
+		};
+
+		
 		//constructor
 		__AAE_LINKED_LIST(_)();
+		//destructor
+		~__AAE_LINKED_LIST(_)();
 
 		//member data
 		aae_size_t m_size;
-		__AAE_LINKED_LIST(_elem) * m_first;
-		__AAE_LINKED_LIST(_elem) * m_last;
-		__AAE_LINKED_LIST(_elem) * m_it;
+		__elem * m_first;
+		__elem * m_last;
+		__elem * m_it;
 
 		//member functions
 		AAE_LINKED_LIST_RETURN_VALUES push_back(AAE_LINKED_LIST_TYPE tValue);
@@ -87,7 +90,7 @@ Safe types:
 	AAE_LINKED_LIST_RETURN_VALUES __AAE_LINKED_LIST(_)::push_back(AAE_LINKED_LIST_TYPE tValue)
 	{
 	
-		__AAE_LINKED_LIST(_elem) * pNewElem = AAE_NEW(__AAE_LINKED_LIST(_elem), AAE_LINKED_LIST_MEMORY_ARENA);
+		__elem * pNewElem = AAE_NEW(__elem, AAE_LINKED_LIST_MEMORY_ARENA);
 		if (!pNewElem) return AAE_LINKED_LIST_ALLOCATION_ERROR;
 
 
@@ -105,7 +108,7 @@ Safe types:
 	AAE_LINKED_LIST_RETURN_VALUES __AAE_LINKED_LIST(_)::push_front(AAE_LINKED_LIST_TYPE tValue)
 	{
 
-		__AAE_LINKED_LIST(_elem) * pNewElem = AAE_NEW(__AAE_LINKED_LIST(_elem), AAE_LINKED_LIST_MEMORY_ARENA);
+		__elem * pNewElem = AAE_NEW(__elem, AAE_LINKED_LIST_MEMORY_ARENA);
 		if (!pNewElem) return AAE_LINKED_LIST_SUCCESS;
 
 
@@ -129,25 +132,25 @@ Safe types:
 	}
 
 
-	void __AAE_LINKED_LIST(_free_nodes)(__AAE_LINKED_LIST(_) * pList)
+	__AAE_LINKED_LIST(_)::~__AAE_LINKED_LIST(_)()
 	{
 
-		if (!pList) return;
-		pList->m_it = pList->m_first;
-		__AAE_LINKED_LIST(_elem) * pTempElem = NULL;
+		m_it = m_first;
+		__elem * pTempElem = NULL;
 
-		while (pList->m_it != NULL)
+		while (m_it != NULL)
 		{
 
-			pTempElem = pList->m_it;
-			pList->m_it = pList->m_it->m_next;
+			pTempElem = m_it;
+			m_it = m_it->m_next;
 			AAE_DELETE(pTempElem, AAE_LINKED_LIST_MEMORY_ARENA);
 
 		}
 
-		pList->m_first = pList->m_last = pList->m_it = NULL;
+		m_first = m_last = m_it = NULL;
 
 	}
+
 
 
 
@@ -156,7 +159,7 @@ Safe types:
 *Types
 */
 #define aae_LinkedList(TYPE)					__linked_list_##TYPE //Defines a linked list of a certain TYPE
-#define aae_LinkedListElement(TYPE)				__linked_list_elem_##TYPE //Defines a node holding data of TYPE
+#define aae_LinkedListElement(TYPE)				__linked_list_##TYPE::__elem //Defines a node holding data of TYPE
 /**
 List of list members (better don't modify this using other than defined functions):
 m_first - the first node in the list
@@ -171,7 +174,6 @@ m_it - an iterator to iterate list nodes
 /**
 *Useful
 */
-#define aae_LinkedListFreeNodes(TYPE, list)			__linked_list_free_nodes##TYPE(list)
 #define aae_LinkedListForEach(list)				for (list->m_it = list->m_first; list->m_it != NULL; list->m_it = list->m_it->m_next)
 
 
