@@ -75,9 +75,9 @@ Safe types:
 
 		//member data
 		aae_size_t m_size;
-		__elem * m_first;
-		__elem * m_last;
-		__elem * m_it;
+		__elem * m_first; //first member in the list
+		__elem * m_last; //last member in the list
+		__elem * m_it; //default iterator
 
 		//member functions
 		AAE_LINKED_LIST_RETURN_VALUES push_back(AAE_LINKED_LIST_TYPE tValue);

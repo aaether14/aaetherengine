@@ -14,8 +14,8 @@
 
 
 
-#ifndef AAE_INTERN
-#define AAE_INTERN static
+#ifndef AAE_INTERN_TOOL
+#define AAE_INTERN_TOOL static
 #endif
 
 
@@ -35,9 +35,9 @@
 
 
 
-AAE_INTERN uint32_t has_initialized = 0;
-AAE_INTERN void *managed_memory_start;
-AAE_INTERN void *last_valid_address;
+AAE_INTERN_TOOL uint32_t has_initialized = 0;
+AAE_INTERN_TOOL void *managed_memory_start;
+AAE_INTERN_TOOL void *last_valid_address;
 
 
 
