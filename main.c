@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "aae_utils/aae_linked_list_type_generation.h"
-
+#include "aae_utils/defs/aae_rb_tree.def"
 
 
 //extern variable from aae_memory_allocator.h
@@ -180,7 +180,7 @@ void rb_insert_node(tree * t, int key)
 				{
 
 					new_node = new_node->parent;
-					rb_left_rotate(t, new_node);
+					__rb_tree_left_rotate(t, new_node);
 				}
 				
 				new_node->parent->color = tree::node::black;
@@ -215,7 +215,7 @@ void rb_insert_node(tree * t, int key)
 				
 				new_node->parent->color = tree::node::black;
 				new_node->parent->parent->color = tree::node::red;
-				rb_left_rotate(t, new_node->parent->parent);
+				__rb_tree_left_rotate(t, new_node->parent->parent);
 
 			}
 

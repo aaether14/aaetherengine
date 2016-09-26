@@ -1,0 +1,60 @@
+#ifndef AAE_RB_TREE_DEF
+#define AAE_RB_TREE_DEF
+#include "aae_defines.h"
+#include "aae_types.h"
+#include "aae_memory_allocator.h"
+
+
+/**
+*Posible return values for the red black tree
+*/
+	enum AAE_RB_TREE_RETURN_VALUES
+	{
+
+		AAE_RB_TREE_ALLOCATION_ERROR = -1,
+		AAE_RB_TREE_FALSE = 0,
+		AAE_RB_TREE_TRUE = 1,
+		AAE_RB_TREE_SUCCESS = 2
+
+	};
+
+
+
+template <typename TREE, typename NODE>
+void __rb_tree_left_rotate(TREE * t, NODE * x)
+{
+	
+	
+	NODE * y = x->right;
+	x->right = y->left;
+
+
+
+	if (y->left != t->nil)
+		y->left->parent = x;
+
+
+
+	y->parent = x->parent;
+	if (x->parent == t->nil)
+		t->root = y;
+	else
+	{
+
+		if (x == x->parent->left)
+			x->parent->left = y;
+		else
+			x->parent->right = y;
+	}
+
+
+
+	y->left = x;
+	x->parent = y;
+
+
+}
+
+
+
+#endif /* AAE_RB_TREE_DEF*/
