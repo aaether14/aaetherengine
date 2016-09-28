@@ -5,6 +5,7 @@
 #include "aae_memory_allocator.h"
 
 
+
 /**
 *Posible return values for the red black tree
 */
@@ -57,4 +58,221 @@ void __rb_tree_left_rotate(TREE * t, NODE * x)
 
 
 
+template <typename TREE, typename NODE>
+void __rb_tree_right_rotate(TREE * t, NODE * y)
+{
+
+
+	NODE * x = y->left;
+	y->left = x->right;
+
+
+
+	if (x->right != t->nil)
+		x->right->parent = y;
+
+
+
+	x->parent = y->parent;
+	if (y->parent == t->nil) 
+		t->root = x;
+	else
+	{
+		if (y == y->parent->left)
+			y->parent->left = x;
+		else
+			y->parent->right = x;
+	}
+
+
+
+	x->right = y;
+	y->parent = x;
+
+}
+
+
+
+
 #endif /* AAE_RB_TREE_DEF*/
+
+
+
+
+#ifndef AAE_RB_TREE_KEY_TYPE
+#error "Must define AAE_RB_TREE_KEY_TYPE!"
+#endif
+
+
+
+
+#ifndef AAE_RB_TREE_MEMORY_ARENA
+#error "Must define AAE_RB_TREE_MEMORY_ARENA!"
+#endif
+
+
+
+
+
+#define __AAE_RB_TREE(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__rb_tree, NAME), AAE_RB_TREE_KEY_TYPE)
+
+
+
+
+struct tree
+{
+
+
+	struct node
+	{	
+		enum {black, red} color;
+		int key;
+		node *parent, *left, *right;
+	} *root, *nil;
+
+
+	tree()
+	{
+
+		nil = AAE_NEW(node, AAE_RB_TREE_MEMORY_ARENA);
+		nil->parent = nil->left = nil->right = nil;
+		nil->color = node::black;
+		root = nil;
+
+	}
+
+
+
+};
+
+
+
+
+tree::node* insert_node(tree * t, tree::node * parent, tree::node *& root, int key)
+{ 
+
+
+	if (root == t->nil)
+	{
+		
+		root = AAE_NEW(tree::node, AAE_RB_TREE_MEMORY_ARENA);
+		root->key = key;
+		root->left = root->right = t->nil;
+		root->parent = parent;
+		return root;
+
+	}
+	else
+	{
+
+		if (key < root->key)
+			return insert_node(t, root, root->left, key);
+		else
+			return insert_node(t, root, root->right, key);
+
+	}
+	
+
+}
+
+
+
+
+void rb_insert_node(tree * t, int key)
+{
+
+
+ 
+	tree::node * new_node = insert_node(t, t->nil, t->root,  key);
+	new_node->color = tree::node::red;
+
+
+
+	while (new_node->parent->color == tree::node::red)
+	{
+
+
+		if (new_node->parent == new_node->parent->parent->left)
+		{
+
+
+			tree::node * right_uncle = new_node->parent->parent->right;
+			if (right_uncle->color == tree::node::red)
+			{
+
+				right_uncle->color = tree::node::black;
+				new_node->parent->color = tree::node::black;
+				new_node->parent->parent->color = tree::node::red;
+				new_node = new_node->parent->parent;
+
+			}
+			else
+			{
+
+				if (new_node == new_node->parent->right)
+				{
+
+					new_node = new_node->parent;
+					__rb_tree_left_rotate(t, new_node);
+				}
+				
+				new_node->parent->color = tree::node::black;
+				new_node->parent->parent->color = tree::node::red;
+				__rb_tree_right_rotate(t, new_node->parent->parent);
+
+			}
+
+		}
+		else
+		{
+
+			tree::node * left_uncle = new_node->parent->parent->left;
+			if (left_uncle->color == tree::node::red)
+			{
+
+				left_uncle->color = tree::node::black;
+				new_node->parent->color = tree::node::black;
+				new_node->parent->parent->color = tree::node::red;
+				new_node = new_node->parent->parent;
+
+			}
+			else
+			{
+
+				if (new_node == new_node->parent->left)
+				{
+
+					new_node = new_node->parent;
+					__rb_tree_right_rotate(t, new_node);
+				}
+				
+				new_node->parent->color = tree::node::black;
+				new_node->parent->parent->color = tree::node::red;
+				__rb_tree_left_rotate(t, new_node->parent->parent);
+
+			}
+
+			
+
+		}
+
+	}
+	t->root->color = tree::node::black;
+
+
+}
+
+
+
+
+/**
+*Undefine defines
+*/
+#ifdef AAE_RB_TREE_KEY_TYPE
+#undef AAE_RB_TREE_KEY_TYPE
+#endif
+
+
+#ifdef AAE_RB_TREE_MEMORY_ARENA
+#undef AAE_RB_TREE_MEMORY_ARENA
+#endif

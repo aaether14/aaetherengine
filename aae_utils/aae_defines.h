@@ -8,6 +8,10 @@
 
 
 
+#define AAE_NULL nullptr
+
+
+
 #define TOKENPASTE(x, y) x##y
 #define INDIRECT_TOKENPASTE(x, y) TOKENPASTE(x, y)
 

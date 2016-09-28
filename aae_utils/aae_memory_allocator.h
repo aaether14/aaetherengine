@@ -32,11 +32,6 @@ struct aae_allocator
 
 
 
-// simple mallocator
-extern aae_allocator aae_mallocator;
-
-
-
 
 template <typename T, class Arena>
 void aae_delete(T * object, Arena & arena)
