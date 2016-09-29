@@ -34,7 +34,7 @@ struct aae_allocator
 
 
 template <typename T, class Arena>
-void aae_delete(T * object, Arena & arena)
+static inline void aae_delete(T * object, Arena & arena)
 {
 	object->~T();
 	arena.Free(object);

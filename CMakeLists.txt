@@ -1,25 +1,33 @@
 project(aaetherengine)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostdlib -fno-exceptions")
 cmake_minimum_required(VERSION 2.8)
 
 
 
+#load modules
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 find_package(aae_utils REQUIRED)
 
 
 
+#include directories of the project
 include_directories(${CMAKE_SOURCE_DIR}/aae_utils)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostdlib -fno-exceptions")
+
+
+
+if (CMAKE_SYSTEM_NAME STREQUAL Linux)
+aae_add_source(asm/linux/aae_main.s)
+endif()
 
 
 
 #add all source files here
 aae_add_source(main.c)
-aae_add_source(aae_main.s)
 #-------------------------
 
 
 
+#create target
 set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CXX)
 add_executable(${PROJECT_NAME} ${SOURCES})
 

@@ -8,7 +8,27 @@
 
 
 
+#ifndef AAE_NULL
 #define AAE_NULL nullptr
+#endif
+
+
+
+#ifndef stdin
+#define stdin 0
+#endif
+
+
+
+#ifndef stdout
+#define stdout 1
+#endif
+
+
+
+#ifndef stderr
+#define stderr 2
+#endif
 
 
 
