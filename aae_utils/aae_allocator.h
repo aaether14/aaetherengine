@@ -3,10 +3,11 @@
 
 
 #include <stdint.h>
+#include "aae_defines.h"
 
 
 #ifdef __cplusplus
-extern "C" {
+AAE_EXTERN_TOOL {
 #endif
 
 

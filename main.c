@@ -11,27 +11,27 @@ aae_allocator aae_mallocator;
 #include "aae_utils/defs/aae_linked_list.def"
 
 
+
+
+AAE_EXTERN_TOOL void aae_fwrite(int32_t fd, const char * buffer, aae_size_t length);
 /**
 *Wrapper for linux's sys_write
 */
-extern "C" void aae_fwrite(int32_t fd, const char * buffer, aae_size_t length);
 
 
 
-extern "C" int aae_main()
+
+AAE_EXTERN_TOOL int32_t aae_main()
 {
-
-
-	aae_fwrite(stderr, "Hello World!\n", 12);
-
-
-
-	aae_LinkedList(float) * test = AAE_NEW(aae_LinkedList(float), aae_mallocator);
-	test->push_back(2.2);
-	AAE_DELETE(test, aae_mallocator);
-
-
-
+	
+	aae_LinkedList(float) * list = AAE_NEW(aae_LinkedList(float), aae_mallocator);
+	list->push_back(1.23);
+	list->push_front(2.54);
+	aae_fwrite(stderr, "Hello World!\n", 13);
+	AAE_DELETE(list, aae_mallocator);
 	return 0;
 
 }
+
+
+

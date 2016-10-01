@@ -11,12 +11,12 @@ find_package(aae_utils REQUIRED)
 
 #include directories of the project
 include_directories(${CMAKE_SOURCE_DIR}/aae_utils)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostdlib -fno-exceptions")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostartfiles -nostdlib -fno-exceptions")
 
 
 
 if (CMAKE_SYSTEM_NAME STREQUAL Linux)
-aae_add_source(asm/linux/aae_main.s)
+aae_add_source(asm/x64/linux/aae_main.s)
 endif()
 
 
@@ -36,7 +36,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 #things to do if platform is linux
 if(CMAKE_SYSTEM_NAME STREQUAL Linux)
 find_library(AAE_ALLOCATOR_LIB NAMES libaae_allocator.so PATHS ${CMAKE_BINARY_DIR}/lib)
-target_link_libraries (${PROJECT_NAME} -lGL -lX11 ${AAE_ALLOCATOR_LIB})
+target_link_libraries (${PROJECT_NAME} ${AAE_ALLOCATOR_LIB})
 add_definitions(-DAAE_LINUX_PLATFORM)
 endif()
 
