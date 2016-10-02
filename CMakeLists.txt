@@ -22,6 +22,7 @@ endif()
 
 
 #add all source files here
+aae_add_source(aae_utils/aae_allocators.c)
 aae_add_source(main.c)
 #-------------------------
 

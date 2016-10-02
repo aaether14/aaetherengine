@@ -3,15 +3,34 @@
 
 
 #include <stdint.h>
-#include <stddef.h>
 
 
 
-typedef long int i64;
+typedef int64_t i64;
 typedef int32_t i32;
-typedef unsigned long int u64;
+typedef int16_t i16;
+typedef int8_t i8;
+
+
+
+typedef uint64_t u64;
 typedef uint32_t u32;
-typedef size_t aae_size_t;
+typedef uint16_t u16;
+typedef uint8_t u8;
+
+
+/**
+*Not really a guarantee
+*/
+typedef float r32;
+typedef double r64;
+
+
+
+#ifdef __GNUC__ 
+typedef __SIZE_TYPE__ aae_size_t;
+#endif
+
 
 
 

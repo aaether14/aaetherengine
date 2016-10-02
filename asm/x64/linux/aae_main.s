@@ -1,11 +1,11 @@
 #x64
 .text
 .global _start
-.global aae_fwrite
+.global aae_write
 
 
 
-aae_fwrite:
+aae_write:
 	pushq %rax
 	pushq %rbx
 	pushq %rcx

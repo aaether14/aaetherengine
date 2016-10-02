@@ -1,8 +1,3 @@
-/**
-*aae_defines.h - 5.08.2016 - Dinescu Stefan-Cristian aka. Aaether
-*/
-
-
 #ifndef AAE_DEFINES_H
 #define AAE_DEFINES_H
 
@@ -17,18 +12,13 @@
 #endif
 
 
-#ifndef stdin
-#define stdin 0
-#endif
-
-
-#ifndef stdout
-#define stdout 1
-#endif
-
-
-#ifndef stderr
-#define stderr 2
+#ifdef __GNUC__
+enum __aae__std__files
+{
+	stdin,
+	stdout,
+	stderr
+};
 #endif
 
 

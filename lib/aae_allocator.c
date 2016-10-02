@@ -1,6 +1,5 @@
 /**
 *linux general purpose allocator by Stefan Cristian Dinescu aka Aaether
-*can allocate a max 4gb of memory at once
 */
 
 
@@ -9,8 +8,12 @@
 *Include the sbrk function 
 */ 
 #include <unistd.h> 
-#include <stdint.h>
 
+
+
+#ifdef __GNUC__ 
+typedef __SIZE_TYPE__ aae_size_t;
+#endif
 
 
 
@@ -20,11 +23,9 @@
 
 
 
-
 #ifndef AAE_NULL
 #define AAE_NULL ((void*)0);  
 #endif
-
 
 
 
@@ -34,21 +35,17 @@
 
 
 
-
-AAE_INTERN_TOOL uint32_t has_initialized = 0;
+AAE_INTERN_TOOL int has_initialized = 0;
 AAE_INTERN_TOOL void *managed_memory_start;
 AAE_INTERN_TOOL void *last_valid_address;
 
 
 
-
-
 struct mem_control_block 
 { 
-	uint32_t size;
-	uint32_t is_available; 
+	aae_size_t size;
+	int is_available; 
 };
-
 
 
 
@@ -90,7 +87,7 @@ void aae_free(void *firstbyte)
 
 
 
-void *aae_malloc(uint32_t numbytes) 
+void *aae_malloc(aae_size_t numbytes) 
 { 
 
 
@@ -238,7 +235,7 @@ void *aae_malloc(uint32_t numbytes)
 
 
 
-uint32_t aae_allocated_memory()
+aae_size_t aae_allocated_memory()
 {
-	return (uint32_t)(last_valid_address - managed_memory_start);
+	return (aae_size_t)(last_valid_address - managed_memory_start);
 }
