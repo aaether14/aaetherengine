@@ -1,7 +1,21 @@
 #x64
 .text
-.global _start
+.global aae_exit
 .global aae_write
+.global _start
+
+
+
+
+aae_exit:
+	pushq %rax
+	pushq %rbx
+	movl $1, %eax
+	movl %edi, %ebx
+	int $0x80
+	popq %rbx
+	popq %rax
+	retq
 
 
 
@@ -21,6 +35,6 @@ aae_write:
 
 _start:
 	callq aae_main
-	movl %eax, %ebx
-	movl $1, %eax
-	int $0x80
+	movl %eax, %edi
+	callq aae_exit
+	retq

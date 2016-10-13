@@ -22,6 +22,8 @@ endif()
 
 
 #add all source files here
+aae_add_source(aae_utils/assert/aae_assert.c)
+aae_add_source(aae_utils/string/aae_string.c)
 aae_add_source(aae_utils/aae_allocators.c)
 aae_add_source(main.c)
 #-------------------------
