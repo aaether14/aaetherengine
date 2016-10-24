@@ -1,7 +1,7 @@
-#BUILD SYSTEM by Aaether
+#BUILD SYSTEM by Aaether - linux
 
-
-
+	#embed license into executable
+	objcopy -I binary -O elf64-x86-64 -B i386:x86-64 license build/license.o
 	printf "Building "$1"...\n"
 	printf "Creating build directory...\n"
 	mkdir -p build

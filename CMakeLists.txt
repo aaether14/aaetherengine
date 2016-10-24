@@ -11,7 +11,7 @@ find_package(aae_utils REQUIRED)
 
 #include directories of the project
 include_directories(${CMAKE_SOURCE_DIR}/aae_utils)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostartfiles -nostdlib -fno-exceptions")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostartfiles -nostdlib -fno-exceptions license.o")
 
 
 

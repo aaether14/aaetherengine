@@ -23,7 +23,7 @@ AAE_EXTERN_TOOL i32 aae_main()
 	list->push_back(1.23);
 	list->push_front(2.54);
 	aae_write(stdout, "Hello World!\n", 13);
-	aae_write(stdout, "Lol Dude\n", 9);
+	aae_write(stdout, "Lol Duda\n", 9);
 	AAE_DELETE(list, aae_mallocator);
 
 
