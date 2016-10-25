@@ -8,33 +8,29 @@
 
 
 aae_exit:
-	pushl %eax
 	pushl %ebx
 	movl $1, %eax
-	movl %edi, %ebx
+	movl 8(%esp), %ebx
 	int $0x80
 	popl %ebx
-	popl %eax
 	retl
 
 
 
 aae_write:
-	pushl %eax
 	pushl %ebx
-	pushl %ecx
 	movl $4, %eax
-	movl %edi, %ebx
-	movl %esi, %ecx
+	movl 8(%esp), %ebx
+	movl 12(%esp), %ecx
+	movl 16(%esp), %edx
 	int $0x80
-	popl %ecx
 	popl %ebx
-	popl %eax
 	retl
 
 
 _start:
 	calll aae_main
-	movl %eax, %edi
+	pushl %eax
 	calll aae_exit
+	popl %eax
 	retl

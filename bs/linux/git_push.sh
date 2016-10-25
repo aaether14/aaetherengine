@@ -1,4 +1,5 @@
 #GIT PUSH MACRO by Aaether
+#$1 is the commit description
 
 
 	printf "Adding all files in the repository!\n"
