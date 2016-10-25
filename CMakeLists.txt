@@ -1,3 +1,4 @@
+#project name and version
 project(aaetherengine)
 cmake_minimum_required(VERSION 2.8)
 
@@ -11,12 +12,27 @@ find_package(aae_utils REQUIRED)
 
 #include directories of the project
 include_directories(${CMAKE_SOURCE_DIR}/aae_utils)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -nostartfiles -nostdlib -fno-exceptions license.o")
+list(APPEND CMAKE_CXX_FLAGS "-std=c++11 -nostartfiles -nostdlib -fno-exceptions")
 
 
 
+#tell the compiler which architecture the build is for
+if (AAE_CPU_ARCHITECTURE STREQUAL aae_32bit)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+elseif(AAE_CPU_ARCHITECTURE STREQUAL aae_64bit)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+endif()
+
+
+
+#add sources required for linux build
 if (CMAKE_SYSTEM_NAME STREQUAL Linux)
+aae_add_source(build/license.o)
+if (AAE_CPU_ARCHITECTURE STREQUAL aae_32bit)
+aae_add_source(asm/x86/linux/aae_main.s)
+elseif(AAE_CPU_ARCHITECTURE STREQUAL aae_64bit)
 aae_add_source(asm/x64/linux/aae_main.s)
+endif()
 endif()
 
 
@@ -25,7 +41,7 @@ endif()
 aae_add_source(aae_utils/assert/aae_assert.c)
 aae_add_source(aae_utils/string/aae_string.c)
 aae_add_source(aae_utils/aae_allocators.c)
-aae_add_source(main.c)
+aae_add_source(aae_main.c)
 #-------------------------
 
 
@@ -50,4 +66,18 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
 add_definitions(-DAAE_DEBUG_BUILD)
 elseif(CMAKE_BUILD_TYPE STREQUAL Release)
 add_definitions(-DAAE_RELEASE_BUILD)
-endif() 
+endif()
+
+
+
+#have some flah defined for corresponding architecture
+if (AAE_CPU_ARCHITECTURE STREQUAL aae_32bit)
+add_definitions(-DAAE_32BIT_BUILD)
+elseif(AAE_CPU_ARCHITECTURE STREQUAL aae_64bit)
+add_definitions(-DAAE_64BIT_BUILD)
+endif()
+
+
+
+
+

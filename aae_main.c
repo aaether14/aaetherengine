@@ -18,15 +18,8 @@ extern aae_allocator aae_mallocator;
 AAE_EXTERN_TOOL i32 aae_main()
 {
 
-
-	aae_LinkedList(r32) * list = AAE_NEW(aae_LinkedList(r32), aae_mallocator);
-	list->push_back(1.23);
-	list->push_front(2.54);
-	aae_write(stdout, "Hello World!\n", 13);
-	aae_write(stdout, "Lol Duda\n", 9);
-	AAE_DELETE(list, aae_mallocator);
-
-
+	const char * str = "Hello World!\n";
+	aae_write(stdout, str, aae_strlen(str));
 	return 0;
 
 }

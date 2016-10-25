@@ -16,4 +16,3 @@ AAE_EXTERN_TOOL void aae_write(i32 fd, const char * buffer, aae_size_t length);
 #define AAE_EXIT_FUNC
 AAE_EXTERN_TOOL void aae_exit(i32 exit_code);
 #endif
-

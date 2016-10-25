@@ -10,8 +10,8 @@
 aae_exit:
 	pushq %rax
 	pushq %rbx
-	movl $1, %eax
-	movl %edi, %ebx
+	movq $1, %rax
+	movq %rdi, %rbx
 	int $0x80
 	popq %rbx
 	popq %rax
@@ -23,8 +23,8 @@ aae_write:
 	pushq %rax
 	pushq %rbx
 	pushq %rcx
-	movl $4, %eax
-	movl %edi, %ebx
+	movq $4, %rax
+	movq %rdi, %rbx
 	movq %rsi, %rcx
 	int $0x80
 	popq %rcx
@@ -35,6 +35,6 @@ aae_write:
 
 _start:
 	callq aae_main
-	movl %eax, %edi
+	movq %rax, %rdi
 	callq aae_exit
 	retq
