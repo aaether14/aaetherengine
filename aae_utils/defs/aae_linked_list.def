@@ -9,7 +9,7 @@ Features:
 Safe types:
 -aae_LinkedList(TYPE)
 -aae_LinkedListElement(TYPE)
-*/
+**/
 
 
 
@@ -20,7 +20,7 @@ m_last - the last node in the list
 m_size - the size of the list
 ----------------------------------
 m_it - an iterator to iterate list nodes
-*/
+**/
 
 
 
@@ -35,7 +35,7 @@ m_it - an iterator to iterate list nodes
 
 /**
 *Posible return values for the linked list
-*/
+**/
 	enum AAE_LINKED_LIST_RETURN_VALUES
 	{
 		AAE_LINKED_LIST_ALLOCATION_ERROR = -1,
@@ -43,7 +43,7 @@ m_it - an iterator to iterate list nodes
 		AAE_LINKED_LIST_TRUE = 1,
 		AAE_LINKED_LIST_SUCCESS = 2
 	};
-#endif /* AAE_LINKED_LIST_DEF*/
+#endif /** AAE_LINKED_LIST_DEF **/
 
 
 
@@ -64,17 +64,17 @@ m_it - an iterator to iterate list nodes
 
 /**
 *Indirection is used in order to achieve defined token concatenation
-*/
+**/
 #define __AAE_LINKED_LIST(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__linked_list, NAME), AAE_LINKED_LIST_TYPE)
 
 
 
 
-	struct __AAE_LINKED_LIST(_) /* __linked_list_##AAE_LINKED_LIST_TYPE -eg. __linked_list_float */
+	struct __AAE_LINKED_LIST(_) /** __linked_list_##AAE_LINKED_LIST_TYPE -eg. __linked_list_float **/
 	{	
 		
 		
-		struct __elem /* a node in the linked list */
+		struct __elem /** a node in the linked list **/
 		{
 			AAE_LINKED_LIST_TYPE m_data;
 			__elem * m_next;
@@ -82,11 +82,11 @@ m_it - an iterator to iterate list nodes
 
 		
 
-		//member data
+		/** member data **/
 		aae_size_t m_size;
-		__elem * m_first; //first member in the list
-		__elem * m_last; //last member in the list
-		__elem * m_it; //default iterator
+		__elem * m_first; /** first member in the list **/
+		__elem * m_last; /**last member in the list **/
+		__elem * m_it; /** default iterator **/
 
 
 
@@ -165,20 +165,20 @@ m_it - an iterator to iterate list nodes
 
 /**
 *Types
-*/
-#define aae_LinkedList(TYPE)					__linked_list_##TYPE //Defines a linked list of a certain TYPE
-#define aae_LinkedListElement(TYPE)				__linked_list_##TYPE::__elem //Defines a node holding data of TYPE
+**/
+#define aae_LinkedList(TYPE)					__linked_list_##TYPE /** Defines a linked list with nodes holding data of a certain TYPE **/
+#define aae_LinkedListElement(TYPE)				__linked_list_##TYPE::__elem /** Defines a node holding data of TYPE **/
 
 
 /**
 *Useful
-*/
+**/
 #define aae_LinkedListForEach(list)				for (list->m_it = list->m_first; list->m_it != NULL; list->m_it = list->m_it->m_next)
 
 
 /**
 *Undefine defines
-*/
+**/
 #ifdef AAE_LINKED_LIST_TYPE
 #undef AAE_LINKED_LIST_TYPE
 #endif

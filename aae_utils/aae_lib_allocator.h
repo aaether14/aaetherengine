@@ -1,3 +1,6 @@
+/**
+*This is not thread safe!
+*/
 #ifndef AAE_LIB_ALLOCATOR_H
 #define AAE_LIB_ALLOCATOR_H
 

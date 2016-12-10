@@ -5,7 +5,7 @@
 void __aae_assert(const char * msg);
 
 
-#endif	//AAE_ASSERT_H
+#endif	/** AAE_ASSERT_H **/
 
 
 

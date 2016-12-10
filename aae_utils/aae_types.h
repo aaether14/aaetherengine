@@ -26,6 +26,10 @@ typedef float r32;
 typedef double r64;
 
 
+typedef char byte;
+typedef const char* const_byte_ptr;
+
+
 
 #ifdef __GNUC__ 
 typedef __SIZE_TYPE__ aae_size_t;

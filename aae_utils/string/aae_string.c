@@ -13,3 +13,24 @@ aae_size_t aae_strlen(const char *s)
 	return sc - s;
 
 }
+
+
+/**
+*strcmp implementation
+*/
+int aae_strcmp(const char * a, const char * b)
+{
+	while (*a)
+	{
+		if (*a == *b)
+		{
+			++a;
+			++b;
+		}
+		else
+		{
+			return *a - *b;
+		}
+	}
+	return *b ? -1 : 0;
+}

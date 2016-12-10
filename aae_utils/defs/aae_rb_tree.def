@@ -1,23 +1,29 @@
+/**
+---aae_rb_tree.def - Dinescu Stefan-Cristian aka Aaether - 10.12.2016
+----------------------------------------------------------------------
+Code generation for red/black tree with TYPE keys
+-don't ever use variables, functions etc. starting with "__". Only the framework has this right.
+AAE_RB_TREE_KEY_TYPE must be defined
+AAE_RB_TREE_VALUE_TYPE may be defined for key/value pairs
+AAE_RB_TREE_VALUE_IDENTITY should be defined if AAE_RB_TREE_VALUE_TYPE is defined
+AAE_RB_TREE_MEMORY_ARENA must de defined - see aae_allocators.h for further reference
+Features:
+-insert nodes
+Safe types:
+-aae_RBTree(TYPE)
+-aae_RBTreeNode(TYPE)
+**/
+
+
+
+
+
 #ifndef AAE_RB_TREE_DEF
 #define AAE_RB_TREE_DEF
 #include "aae_defines.h"
 #include "aae_types.h"
 #include "aae_memory_allocator.h"
 
-
-
-/**
-*Posible return values for the red black tree
-*/
-	enum AAE_RB_TREE_RETURN_VALUES
-	{
-
-		AAE_RB_TREE_ALLOCATION_ERROR = -1,
-		AAE_RB_TREE_FALSE = 0,
-		AAE_RB_TREE_TRUE = 1,
-		AAE_RB_TREE_SUCCESS = 2
-
-	};
 
 
 
@@ -31,14 +37,14 @@ void __rb_tree_left_rotate(TREE * t, NODE * x)
 
 
 
-	if (y->left != t->nil)
+	if (y->left != t->m_nil)
 		y->left->parent = x;
 
 
 
 	y->parent = x->parent;
-	if (x->parent == t->nil)
-		t->root = y;
+	if (x->parent == t->m_nil)
+		t->m_root = y;
 	else
 	{
 
@@ -68,14 +74,14 @@ void __rb_tree_right_rotate(TREE * t, NODE * y)
 
 
 
-	if (x->right != t->nil)
+	if (x->right != t->m_nil)
 		x->right->parent = y;
 
 
 
 	x->parent = y->parent;
-	if (y->parent == t->nil) 
-		t->root = x;
+	if (y->parent == t->m_nil) 
+		t->m_root = x;
 	else
 	{
 		if (y == y->parent->left)
@@ -94,7 +100,7 @@ void __rb_tree_right_rotate(TREE * t, NODE * y)
 
 
 
-#endif /* AAE_RB_TREE_DEF*/
+#endif /** AAE_RB_TREE_DEF **/
 
 
 
@@ -112,35 +118,216 @@ void __rb_tree_right_rotate(TREE * t, NODE * y)
 
 
 
+#ifndef AAE_RB_TREE_VALUE_IDENTITY
+#define AAE_RB_TREE_VALUE_IDENTITY AAE_NULL
+#endif
 
 
+/**
+*Indirection is used in order to achieve defined token concatenation
+*/
 #define __AAE_RB_TREE(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__rb_tree, NAME), AAE_RB_TREE_KEY_TYPE)
+#ifdef AAE_RB_TREE_VALUE_TYPE
+#define AAE_RB_TREE_NAME INDIRECT_TOKENPASTE(_, AAE_RB_TREE_VALUE_TYPE)
+#else
+#define AAE_RB_TREE_NAME _
+#endif
 
 
 
 
-struct tree
+struct __AAE_RB_TREE(AAE_RB_TREE_NAME) /* __rb_tree_##AAE_RB_TREE_KEY_TYPE -eg. __rb_tree_float */
 {
 
 
-	struct node
+	struct __node /** a red/black node **/
 	{	
 		enum {black, red} color;
-		int key;
-		node *parent, *left, *right;
-	} *root, *nil;
+		AAE_RB_TREE_KEY_TYPE key;
+		#ifdef AAE_RB_TREE_VALUE_TYPE
+		AAE_RB_TREE_VALUE_TYPE value;
+		#endif
+		__node *parent, *left, *right;
+	} *m_root, *m_nil;
 
 
-	tree()
+
+	__AAE_RB_TREE(AAE_RB_TREE_NAME)()
 	{
 
-		nil = AAE_NEW(node, AAE_RB_TREE_MEMORY_ARENA);
-		nil->parent = nil->left = nil->right = nil;
-		nil->color = node::black;
-		root = nil;
+		m_nil = AAE_NEW(__node, AAE_RB_TREE_MEMORY_ARENA);
+		if (m_nil != AAE_NULL)
+		{
+			m_nil->parent = m_nil->left = m_nil->right = m_nil;
+			m_nil->color = __node::black;
+			m_root = m_nil;
+		}
 
 	}
 
+
+	#ifdef AAE_RB_TREE_VALUE_TYPE
+	void insert(AAE_RB_TREE_KEY_TYPE key, AAE_RB_TREE_VALUE_TYPE value)
+	#else
+	void insert(AAE_RB_TREE_KEY_TYPE key)
+	#endif
+	{
+
+
+ 		#ifdef AAE_RB_TREE_VALUE_TYPE
+		__node * new_node = __internal_insert_bst(m_nil, m_root, key, value);
+		#else
+		__node * new_node = __internal_insert_bst(m_nil, m_root, key);
+		#endif
+		if (!new_node) return;
+		new_node->color = __node::red;
+
+
+
+		while (new_node->parent->color == __node::red)
+		{
+
+
+			if (new_node->parent == new_node->parent->parent->left)
+			{
+
+
+				__node * right_uncle = new_node->parent->parent->right;
+				if (right_uncle->color == __node::red)
+				{
+
+					right_uncle->color = __node::black;
+					new_node->parent->color = __node::black;
+					new_node->parent->parent->color = __node::red;
+					new_node = new_node->parent->parent;
+
+				}
+				else
+				{
+
+					if (new_node == new_node->parent->right)
+					{
+
+						new_node = new_node->parent;
+						__rb_tree_left_rotate(this, new_node);
+					}
+					
+					new_node->parent->color = __node::black;
+					new_node->parent->parent->color = __node::red;
+					__rb_tree_right_rotate(this, new_node->parent->parent);
+
+				}
+
+			}
+			else
+			{
+
+				__node * left_uncle = new_node->parent->parent->left;
+				if (left_uncle->color == __node::red)
+				{
+
+					left_uncle->color = __node::black;
+					new_node->parent->color = __node::black;
+					new_node->parent->parent->color = __node::red;
+					new_node = new_node->parent->parent;
+
+				}
+				else
+				{
+
+					if (new_node == new_node->parent->left)
+					{
+
+						new_node = new_node->parent;
+						__rb_tree_right_rotate(this, new_node);
+					}
+					
+					new_node->parent->color = __node::black;
+					new_node->parent->parent->color = __node::red;
+					__rb_tree_left_rotate(this, new_node->parent->parent);
+
+				}
+
+				
+
+			}
+
+		}
+		m_root->color = __node::black;
+
+
+	}
+
+
+	#ifdef AAE_RB_TREE_VALUE_TYPE
+	AAE_RB_TREE_VALUE_TYPE __internal_get(__node * current_node, AAE_RB_TREE_KEY_TYPE key)
+	{
+
+		if (current_node->key == key)
+			return current_node->value;
+		else if (key < current_node->key && current_node->left != m_nil)
+			return __internal_get(current_node->left, key);
+		else if (key > current_node->key && current_node->right != m_nil)
+			return __internal_get(current_node->right, key);
+		else
+			return AAE_RB_TREE_VALUE_IDENTITY;
+
+	}
+	AAE_RB_TREE_VALUE_TYPE get(AAE_RB_TREE_KEY_TYPE key)
+	{
+		return __internal_get(m_root, key);
+	}
+	#endif
+
+
+	#ifdef AAE_RB_TREE_VALUE_TYPE
+	__node* __internal_insert_bst(__node * parent, __node *&root, 
+					AAE_RB_TREE_KEY_TYPE key, 
+					AAE_RB_TREE_VALUE_TYPE value)
+	#else
+	__node* __internal_insert_bst(__node * parent, __node *&root,
+					AAE_RB_TREE_KEY_TYPE key)
+	#endif
+	{ 
+
+
+		if (!parent || !root)
+			return AAE_NULL;
+
+
+
+		if (root == m_nil)
+		{
+			
+			root = AAE_NEW(__node, AAE_RB_TREE_MEMORY_ARENA);
+			if (root == AAE_NULL) return AAE_NULL;
+			root->key = key;
+			#ifdef AAE_RB_TREE_VALUE_TYPE
+			root->value = value;
+			#endif
+			root->left = root->right = m_nil;
+			root->parent = parent;
+			return root;
+
+		}
+		else
+		{
+
+			if (key < root->key)
+			#ifdef AAE_RB_TREE_VALUE_TYPE /** ------------------------ **/
+				return __internal_insert_bst(root, root->left, key, value);
+			else
+				return __internal_insert_bst(root, root->right, key, value);
+			#else /** ----------------------------------------- **/
+				return __internal_insert_bst(root, root->left, key);
+			else
+				return __internal_insert_bst(root, root->right, key);
+			#endif /** ------------------------ **/
+
+		}
+	
+
+	}
 
 
 };
@@ -148,130 +335,32 @@ struct tree
 
 
 
-tree::node* insert_node(tree * t, tree::node * parent, tree::node *& root, int key)
-{ 
-
-
-	if (root == t->nil)
-	{
-		
-		root = AAE_NEW(tree::node, AAE_RB_TREE_MEMORY_ARENA);
-		root->key = key;
-		root->left = root->right = t->nil;
-		root->parent = parent;
-		return root;
-
-	}
-	else
-	{
-
-		if (key < root->key)
-			return insert_node(t, root, root->left, key);
-		else
-			return insert_node(t, root, root->right, key);
-
-	}
-	
-
-}
-
-
-
-
-void rb_insert_node(tree * t, int key)
-{
-
-
- 
-	tree::node * new_node = insert_node(t, t->nil, t->root,  key);
-	new_node->color = tree::node::red;
-
-
-
-	while (new_node->parent->color == tree::node::red)
-	{
-
-
-		if (new_node->parent == new_node->parent->parent->left)
-		{
-
-
-			tree::node * right_uncle = new_node->parent->parent->right;
-			if (right_uncle->color == tree::node::red)
-			{
-
-				right_uncle->color = tree::node::black;
-				new_node->parent->color = tree::node::black;
-				new_node->parent->parent->color = tree::node::red;
-				new_node = new_node->parent->parent;
-
-			}
-			else
-			{
-
-				if (new_node == new_node->parent->right)
-				{
-
-					new_node = new_node->parent;
-					__rb_tree_left_rotate(t, new_node);
-				}
-				
-				new_node->parent->color = tree::node::black;
-				new_node->parent->parent->color = tree::node::red;
-				__rb_tree_right_rotate(t, new_node->parent->parent);
-
-			}
-
-		}
-		else
-		{
-
-			tree::node * left_uncle = new_node->parent->parent->left;
-			if (left_uncle->color == tree::node::red)
-			{
-
-				left_uncle->color = tree::node::black;
-				new_node->parent->color = tree::node::black;
-				new_node->parent->parent->color = tree::node::red;
-				new_node = new_node->parent->parent;
-
-			}
-			else
-			{
-
-				if (new_node == new_node->parent->left)
-				{
-
-					new_node = new_node->parent;
-					__rb_tree_right_rotate(t, new_node);
-				}
-				
-				new_node->parent->color = tree::node::black;
-				new_node->parent->parent->color = tree::node::red;
-				__rb_tree_left_rotate(t, new_node->parent->parent);
-
-			}
-
-			
-
-		}
-
-	}
-	t->root->color = tree::node::black;
-
-
-}
-
+/**
+*Types
+**/
+#define aae_RBTree(TYPE, VALUE)					__rb_tree_##VALUE##TYPE
+#define aae_RBTreeNode(TYPE, VALUE)				__rb_tree_##VALUE##TYPE::__node
 
 
 
 /**
 *Undefine defines
-*/
+**/
+#ifdef AAE_RB_TREE_NAME
+#undef AAE_RB_TREE_NAME
+#endif
+
 #ifdef AAE_RB_TREE_KEY_TYPE
 #undef AAE_RB_TREE_KEY_TYPE
 #endif
 
+#ifdef AAE_RB_TREE_VALUE_TYPE
+#undef AAE_RB_TREE_VALUE_TYPE
+#endif
+
+#ifdef AAE_RB_TREE_VALUE_IDENTITY
+#undef AAE_RB_TREE_VALUE_IDENTITY
+#endif
 
 #ifdef AAE_RB_TREE_MEMORY_ARENA
 #undef AAE_RB_TREE_MEMORY_ARENA
