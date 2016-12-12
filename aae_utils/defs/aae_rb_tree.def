@@ -16,14 +16,12 @@ Safe types:
 
 
 
-
-
 #ifndef AAE_RB_TREE_DEF
 #define AAE_RB_TREE_DEF
 #include "aae_defines.h"
 #include "aae_types.h"
 #include "aae_memory_allocator.h"
-
+#include "error/aae_error.h"
 
 
 
@@ -32,14 +30,16 @@ void __rb_tree_left_rotate(TREE * t, NODE * x)
 {
 	
 	
+	if (!t || !x)
+		return;
+
+
 	NODE * y = x->right;
 	x->right = y->left;
 
 
-
 	if (y->left != t->m_nil)
 		y->left->parent = x;
-
 
 
 	y->parent = x->parent;
@@ -55,10 +55,8 @@ void __rb_tree_left_rotate(TREE * t, NODE * x)
 	}
 
 
-
 	y->left = x;
 	x->parent = y;
-
 
 }
 
@@ -69,6 +67,10 @@ void __rb_tree_right_rotate(TREE * t, NODE * y)
 {
 
 
+	if (!t || !y)
+		return;
+
+
 	NODE * x = y->left;
 	y->left = x->right;
 
@@ -76,7 +78,6 @@ void __rb_tree_right_rotate(TREE * t, NODE * y)
 
 	if (x->right != t->m_nil)
 		x->right->parent = y;
-
 
 
 	x->parent = y->parent;
@@ -91,24 +92,17 @@ void __rb_tree_right_rotate(TREE * t, NODE * y)
 	}
 
 
-
 	x->right = y;
 	y->parent = x;
 
 }
-
-
-
-
 #endif /** AAE_RB_TREE_DEF **/
-
 
 
 
 #ifndef AAE_RB_TREE_KEY_TYPE
 #error "Must define AAE_RB_TREE_KEY_TYPE!"
 #endif
-
 
 
 
@@ -155,13 +149,17 @@ struct __AAE_RB_TREE(AAE_RB_TREE_NAME) /* __rb_tree_##AAE_RB_TREE_KEY_TYPE -eg. 
 	__AAE_RB_TREE(AAE_RB_TREE_NAME)()
 	{
 
+		aae_set_error(0); /** no error at first **/
 		m_nil = AAE_NEW(__node, AAE_RB_TREE_MEMORY_ARENA);
+
 		if (m_nil != AAE_NULL)
 		{
 			m_nil->parent = m_nil->left = m_nil->right = m_nil;
 			m_nil->color = __node::black;
 			m_root = m_nil;
 		}
+		else
+			aae_set_error(15);
 
 	}
 
@@ -173,7 +171,7 @@ struct __AAE_RB_TREE(AAE_RB_TREE_NAME) /* __rb_tree_##AAE_RB_TREE_KEY_TYPE -eg. 
 	#endif
 	{
 
-
+		aae_set_error(0); /** no error at first **/
  		#ifdef AAE_RB_TREE_VALUE_TYPE
 		__node * new_node = __internal_insert_bst(m_nil, m_root, key, value);
 		#else

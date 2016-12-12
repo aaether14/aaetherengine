@@ -7,13 +7,17 @@
 
 /**
 *strlen implementation
-*/
-aae_size_t aae_strlen(const char * s);
+**/
+aae_size_t aae_strlen(const_byte_ptr s);
 /**
 *strcmp implementation
 *will return < 0 if the strings are equal, < 0 if a is "smaller" than b and > 0 otherwise
-*/
-int aae_strcmp(const char * a, const char * b);
+**/
+i32 aae_strcmp(const_byte_ptr a, const_byte_ptr b);
+
+
+/** will convert provided value to string representation in provided base **/ 
+byte_ptr aae_itoa(i32 value, i32 base);
 
 
 

@@ -20,10 +20,10 @@
 	mkdir -p build
 	cd build
 	printf "Running cmake...\n"
-	cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=$2 -DAAE_CPU_ARCHITECTURE=${3:-aae_32bit}  ../
+	cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=${2:-Release} -DAAE_CPU_ARCHITECTURE=${3:-aae_32bit} -DAAE_MULTITHREADED=${4:-No} ../
 	printf "Creating binaries...\n"
 	make
-	if [ "$4" == "--USE_VALGRIND" ]; then
+	if [ "$5" == "--USE_VALGRIND" ]; then
 	valgrind ./$1
 	else
 	time ./$1

@@ -7,6 +7,7 @@
 
 
 
+/** the aaether system is intended to be compiled with gcc **/
 #ifdef __GNUC__
 extern "C++"
 {

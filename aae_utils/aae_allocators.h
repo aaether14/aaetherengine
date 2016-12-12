@@ -13,6 +13,5 @@ struct aae_allocator
 	void * Allocate(aae_size_t size);
 	void Free(void * start);
 
-
 };
 #endif
