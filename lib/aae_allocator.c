@@ -1,12 +1,12 @@
 /**
 *linux general purpose allocator by Stefan Cristian Dinescu aka Aaether
-*/
+**/
 
 
 
-/*
+/**
 *Include the sbrk function 
-*/ 
+**/ 
 #include <unistd.h> 
 
 
@@ -61,23 +61,23 @@ union __memory_location
 void aae_free(void *firstbyte) 
 {
 
-	/*
+	/**
 	*if provided with a null pointer return
-	*/
+	**/
 	if (!firstbyte)
 		return;
 
 
-	/*
+	/**
 	*backup from the given pointer to find the 
 	* mem_control_block 
-	*/ 
+	**/ 
 	struct mem_control_block *mcb = firstbyte - sizeof(struct mem_control_block); 
 
 
-	/*
+	/**
 	*mark the block as being available
-	*/ 
+	**/ 
 	mcb->is_available = 1;     
 	return;
 
@@ -91,15 +91,15 @@ void *aae_malloc(aae_size_t numbytes)
 { 
 
 
-	/* 
+	/** 
 	*initialize if we haven't done so
-	*/
+	**/
 	if(!has_initialized)
 	{
 
-		/*
+		/**
 		*get the system break from the OS and if any error ocures return NULL
-		*/
+		**/
 		last_valid_address = sbrk(0);     
 		if (last_valid_address == AAE_SBRK_ERROR)
 		{	
@@ -107,10 +107,10 @@ void *aae_malloc(aae_size_t numbytes)
 			return AAE_NULL;
 
 		}
-		/* 
+		/**
 		*we don't have any memory to manage yet, so 
 		*just set the beginning to be last_valid_address 
-		*/  
+		**/  
 		managed_memory_start = last_valid_address;     
 
 
@@ -123,36 +123,36 @@ void *aae_malloc(aae_size_t numbytes)
 
 
 	
-	/*
+	/**
 	*this is the memory location we return, will hold 0 untill 
 	*we find a suitable location
-	*/
+	**/
 	void *memory_location = AAE_NULL;
 	 
 
-	/*
+	/**
 	*we also need to allocate memory for the control block
-	*/
+	**/
 	numbytes = numbytes + sizeof(struct mem_control_block);  
 
 
 
-	/*
+	/**
 	*current memory location we're working with
-	*/
+	**/
 	union __memory_location location;
 
 
-	/*
+	/**
 	*we begin searching at the start of the managed memory
-	*/ 
+	**/ 
 	location.as_void = managed_memory_start;
 
 
 
-	/*
+	/**
 	*keep going until we have searched all allocated space
-	*/ 
+	**/ 
 	while(location.as_void != last_valid_address)  
 	{
 

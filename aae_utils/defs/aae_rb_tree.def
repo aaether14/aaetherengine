@@ -5,13 +5,14 @@ Code generation for red/black tree with TYPE keys
 -don't ever use variables, functions etc. starting with "__". Only the framework has this right.
 AAE_RB_TREE_KEY_TYPE must be defined
 AAE_RB_TREE_VALUE_TYPE may be defined for key/value pairs
-AAE_RB_TREE_VALUE_IDENTITY should be defined if AAE_RB_TREE_VALUE_TYPE is defined
 AAE_RB_TREE_MEMORY_ARENA must de defined - see aae_allocators.h for further reference
+AAE_RB_TREE_KEY_COMPARE_FUNCTION must be defined if < operator is invalid for provided key type 
+default compare function: (a, b) -> ((a==b)?0:((a<b)?-1:1))
 Features:
 -insert nodes
-Safe types:
--aae_RBTree(TYPE)
--aae_RBTreeNode(TYPE)
+-attempting to insert the same key twice will result in an update (if tree supports values)
+-search for nodes
+-remove nodes
 **/
 
 
@@ -26,25 +27,21 @@ Safe types:
 
 
 template <typename TREE, typename NODE>
-void __rb_tree_left_rotate(TREE * t, NODE * x)
+void __rb_tree_left_rotate(TREE * tree, NODE * x)
 {
 	
-	
-	if (!t || !x)
-		return;
-
 
 	NODE * y = x->right;
 	x->right = y->left;
 
 
-	if (y->left != t->m_nil)
+	if (y->left != tree->m_nil)
 		y->left->parent = x;
 
 
 	y->parent = x->parent;
-	if (x->parent == t->m_nil)
-		t->m_root = y;
+	if (x->parent == tree->m_nil)
+		tree->m_root = y;
 	else
 	{
 
@@ -54,35 +51,28 @@ void __rb_tree_left_rotate(TREE * t, NODE * x)
 			x->parent->right = y;
 	}
 
-
 	y->left = x;
 	x->parent = y;
-
 }
 
 
 
 template <typename TREE, typename NODE>
-void __rb_tree_right_rotate(TREE * t, NODE * y)
+void __rb_tree_right_rotate(TREE * tree, NODE * y)
 {
-
-
-	if (!t || !y)
-		return;
 
 
 	NODE * x = y->left;
 	y->left = x->right;
 
 
-
-	if (x->right != t->m_nil)
+	if (x->right != tree->m_nil)
 		x->right->parent = y;
 
 
 	x->parent = y->parent;
-	if (y->parent == t->m_nil) 
-		t->m_root = x;
+	if (y->parent == tree->m_nil) 
+		tree->m_root = x;
 	else
 	{
 		if (y == y->parent->left)
@@ -91,13 +81,122 @@ void __rb_tree_right_rotate(TREE * t, NODE * y)
 			y->parent->right = x;
 	}
 
-
 	x->right = y;
 	y->parent = x;
-
 }
+
+
+template <typename TREE, typename NODE>
+void __rb_tree_balance(TREE* tree, NODE* new_node)
+{
+
+	while (new_node->parent->color == NODE::red)
+	{
+
+		if (new_node->parent == new_node->parent->parent->left)
+		{
+
+			NODE* right_uncle = new_node->parent->parent->right;
+			if (right_uncle->color == NODE::red)
+			{
+
+				right_uncle->color = NODE::black;
+				new_node->parent->color = NODE::black;
+				new_node->parent->parent->color = NODE::red;
+				new_node = new_node->parent->parent;
+
+			}
+			else
+			{
+
+				if (new_node == new_node->parent->right)
+				{
+
+					new_node = new_node->parent;
+					__rb_tree_left_rotate(tree, new_node);
+				}
+				
+				new_node->parent->color = NODE::black;
+				new_node->parent->parent->color = NODE::red;
+				__rb_tree_right_rotate(tree, new_node->parent->parent);
+
+			}
+
+		}
+		else
+		{
+
+			NODE* left_uncle = new_node->parent->parent->left;
+			if (left_uncle->color == NODE::red)
+			{
+
+				left_uncle->color = NODE::black;
+				new_node->parent->color = NODE::black;
+				new_node->parent->parent->color = NODE::red;
+				new_node = new_node->parent->parent;
+
+			}
+			else
+			{
+
+				if (new_node == new_node->parent->left)
+				{
+
+					new_node = new_node->parent;
+					__rb_tree_right_rotate(tree, new_node);
+				}
+				
+				new_node->parent->color = NODE::black;
+				new_node->parent->parent->color = NODE::red;
+				__rb_tree_left_rotate(tree, new_node->parent->parent);
+
+			}
+		}
+	}
+}
+
+
+template <typename TREE, typename NODE>
+NODE* __rb_tree_next(TREE * tree, NODE * x)
+{
+
+	if (x == tree->m_nil)
+		return tree->m_nil;
+
+	NODE* y = x->right;
+	if (y != tree->m_nil)
+	{
+		while (y->left != tree->m_nil)
+			y = y->left;
+		return y;
+	}
+	else
+	{
+		y = x->parent;
+		while (x == y->right)
+		{
+			x = y;
+			y = x->parent;
+		}
+		return y;
+	}
+}
+
+
+enum AAE_RB_TREE_ERROR_CODES
+{
+	rb_tree_no_error = 0,
+	rb_tree_could_not_insert_on_invalid_node,
+	rb_tree_could_not_search_on_invalid_node,
+	rb_tree_could_not_allocate_nil_node,
+	rb_tree_could_not_allocate_new_node
+};
 #endif /** AAE_RB_TREE_DEF **/
 
+
+#ifndef AAE_RB_TREE_NAME
+#error "Must define AAE_RB_TREE_NAME"
+#endif
 
 
 #ifndef AAE_RB_TREE_KEY_TYPE
@@ -105,32 +204,17 @@ void __rb_tree_right_rotate(TREE * t, NODE * y)
 #endif
 
 
-
 #ifndef AAE_RB_TREE_MEMORY_ARENA
 #error "Must define AAE_RB_TREE_MEMORY_ARENA!"
 #endif
 
 
-
-#ifndef AAE_RB_TREE_VALUE_IDENTITY
-#define AAE_RB_TREE_VALUE_IDENTITY AAE_NULL
+#ifndef AAE_RB_TREE_KEY_COMPARE_FUNCTION
+#define AAE_RB_TREE_KEY_COMPARE_FUNCTION(a, b) ((a==b)?0:((a<b)?-1:1))
 #endif
 
 
-/**
-*Indirection is used in order to achieve defined token concatenation
-*/
-#define __AAE_RB_TREE(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__rb_tree, NAME), AAE_RB_TREE_KEY_TYPE)
-#ifdef AAE_RB_TREE_VALUE_TYPE
-#define AAE_RB_TREE_NAME INDIRECT_TOKENPASTE(_, AAE_RB_TREE_VALUE_TYPE)
-#else
-#define AAE_RB_TREE_NAME _
-#endif
-
-
-
-
-struct __AAE_RB_TREE(AAE_RB_TREE_NAME) /* __rb_tree_##AAE_RB_TREE_KEY_TYPE -eg. __rb_tree_float */
+struct AAE_RB_TREE_NAME 
 {
 
 
@@ -143,24 +227,24 @@ struct __AAE_RB_TREE(AAE_RB_TREE_NAME) /* __rb_tree_##AAE_RB_TREE_KEY_TYPE -eg. 
 		#endif
 		__node *parent, *left, *right;
 	} *m_root, *m_nil;
+	u8 m_action_flag; /** action flag will be true to suggest different behavior **/
 
 
-
-	__AAE_RB_TREE(AAE_RB_TREE_NAME)()
+	AAE_RB_TREE_NAME()
 	{
-
-		aae_set_error(0); /** no error at first **/
+		aae_set_error(rb_tree_no_error); /** no error at first **/
 		m_nil = AAE_NEW(__node, AAE_RB_TREE_MEMORY_ARENA);
 
-		if (m_nil != AAE_NULL)
+		if (m_nil == AAE_NULL)
+		{
+			aae_set_error(rb_tree_could_not_allocate_nil_node);
+		}
+		else
 		{
 			m_nil->parent = m_nil->left = m_nil->right = m_nil;
 			m_nil->color = __node::black;
 			m_root = m_nil;
 		}
-		else
-			aae_set_error(15);
-
 	}
 
 
@@ -171,138 +255,44 @@ struct __AAE_RB_TREE(AAE_RB_TREE_NAME) /* __rb_tree_##AAE_RB_TREE_KEY_TYPE -eg. 
 	#endif
 	{
 
-		aae_set_error(0); /** no error at first **/
- 		#ifdef AAE_RB_TREE_VALUE_TYPE
-		__node * new_node = __internal_insert_bst(m_nil, m_root, key, value);
-		#else
-		__node * new_node = __internal_insert_bst(m_nil, m_root, key);
+
+		aae_set_error(rb_tree_no_error); /** no error at first **/
+		__node * new_node = __internal_insert_bst(m_nil, m_root, key); /** attempt to insert a new node **/
+		if (!new_node) return; /** give up balancing the tree on invalid insertion **/
+		#ifdef AAE_RB_TREE_VALUE_TYPE
+		new_node->value = value; /** set the value of the new node if user requested so **/
 		#endif
-		if (!new_node) return;
-		new_node->color = __node::red;
+		if (m_action_flag) { m_action_flag = false; return; } /** if we only need to update the node there's no need for balancing **/
+		new_node->color = __node::red; /** make the new node red **/
 
-
-
-		while (new_node->parent->color == __node::red)
-		{
-
-
-			if (new_node->parent == new_node->parent->parent->left)
-			{
-
-
-				__node * right_uncle = new_node->parent->parent->right;
-				if (right_uncle->color == __node::red)
-				{
-
-					right_uncle->color = __node::black;
-					new_node->parent->color = __node::black;
-					new_node->parent->parent->color = __node::red;
-					new_node = new_node->parent->parent;
-
-				}
-				else
-				{
-
-					if (new_node == new_node->parent->right)
-					{
-
-						new_node = new_node->parent;
-						__rb_tree_left_rotate(this, new_node);
-					}
-					
-					new_node->parent->color = __node::black;
-					new_node->parent->parent->color = __node::red;
-					__rb_tree_right_rotate(this, new_node->parent->parent);
-
-				}
-
-			}
-			else
-			{
-
-				__node * left_uncle = new_node->parent->parent->left;
-				if (left_uncle->color == __node::red)
-				{
-
-					left_uncle->color = __node::black;
-					new_node->parent->color = __node::black;
-					new_node->parent->parent->color = __node::red;
-					new_node = new_node->parent->parent;
-
-				}
-				else
-				{
-
-					if (new_node == new_node->parent->left)
-					{
-
-						new_node = new_node->parent;
-						__rb_tree_right_rotate(this, new_node);
-					}
-					
-					new_node->parent->color = __node::black;
-					new_node->parent->parent->color = __node::red;
-					__rb_tree_left_rotate(this, new_node->parent->parent);
-
-				}
-
-				
-
-			}
-
-		}
+		/** start rebalancing the tree **/
+		__rb_tree_balance(this, new_node);
 		m_root->color = __node::black;
 
 
 	}
 
-
-	#ifdef AAE_RB_TREE_VALUE_TYPE
-	AAE_RB_TREE_VALUE_TYPE __internal_get(__node * current_node, AAE_RB_TREE_KEY_TYPE key)
-	{
-
-		if (current_node->key == key)
-			return current_node->value;
-		else if (key < current_node->key && current_node->left != m_nil)
-			return __internal_get(current_node->left, key);
-		else if (key > current_node->key && current_node->right != m_nil)
-			return __internal_get(current_node->right, key);
-		else
-			return AAE_RB_TREE_VALUE_IDENTITY;
-
-	}
-	AAE_RB_TREE_VALUE_TYPE get(AAE_RB_TREE_KEY_TYPE key)
-	{
-		return __internal_get(m_root, key);
-	}
-	#endif
-
-
-	#ifdef AAE_RB_TREE_VALUE_TYPE
-	__node* __internal_insert_bst(__node * parent, __node *&root, 
-					AAE_RB_TREE_KEY_TYPE key, 
-					AAE_RB_TREE_VALUE_TYPE value)
-	#else
-	__node* __internal_insert_bst(__node * parent, __node *&root,
-					AAE_RB_TREE_KEY_TYPE key)
-	#endif
+	__node* __internal_insert_bst(__node * parent, __node *&root, AAE_RB_TREE_KEY_TYPE key)
 	{ 
 
 
 		if (!parent || !root)
+		{
+			aae_set_error(rb_tree_could_not_insert_on_invalid_node);
 			return AAE_NULL;
-
+		}
 
 
 		if (root == m_nil)
 		{
 			
 			root = AAE_NEW(__node, AAE_RB_TREE_MEMORY_ARENA);
-			if (root == AAE_NULL) return AAE_NULL;
+			if (root == AAE_NULL)
+			{
+				aae_set_error(rb_tree_could_not_allocate_new_node);
+				return AAE_NULL;
+			}
 			root->key = key;
-			#ifdef AAE_RB_TREE_VALUE_TYPE
-			root->value = value;
-			#endif
 			root->left = root->right = m_nil;
 			root->parent = parent;
 			return root;
@@ -310,35 +300,60 @@ struct __AAE_RB_TREE(AAE_RB_TREE_NAME) /* __rb_tree_##AAE_RB_TREE_KEY_TYPE -eg. 
 		}
 		else
 		{
-
-			if (key < root->key)
-			#ifdef AAE_RB_TREE_VALUE_TYPE /** ------------------------ **/
-				return __internal_insert_bst(root, root->left, key, value);
-			else
-				return __internal_insert_bst(root, root->right, key, value);
-			#else /** ----------------------------------------- **/
+			i32 partition_result = AAE_RB_TREE_KEY_COMPARE_FUNCTION(key, root->key);
+			if (!partition_result)
+			{
+				m_action_flag = true; /** set action flag true to indicate we only need to update the returned node **/
+				return root;
+			}
+			else if (partition_result < 0)
 				return __internal_insert_bst(root, root->left, key);
 			else
 				return __internal_insert_bst(root, root->right, key);
-			#endif /** ------------------------ **/
 
 		}
 	
+	}
+
+	__node* __internal_search(__node * current_node, AAE_RB_TREE_KEY_TYPE key)
+	{
+
+		if (!current_node)
+		{
+			aae_set_error(rb_tree_could_not_search_on_invalid_node);
+			return m_nil;
+		}
+		else if (current_node == m_nil)
+			return m_nil;
+
+
+		i32 partition_result = AAE_RB_TREE_KEY_COMPARE_FUNCTION(key, current_node->key);
+		if (!partition_result)
+			return current_node;
+		else if (partition_result < 0)
+			return __internal_search(current_node->left, key);
+		else
+			return __internal_search(current_node->right, key);
 
 	}
 
 
+	inline bool has(AAE_RB_TREE_KEY_TYPE key)
+	{
+		aae_set_error(rb_tree_no_error);
+		return (__internal_search(m_root, key) != m_nil);
+	}
+
+
+	#ifdef AAE_RB_TREE_VALUE_TYPE
+	inline AAE_RB_TREE_VALUE_TYPE get(AAE_RB_TREE_KEY_TYPE key)
+	{
+		aae_set_error(rb_tree_no_error);
+		return __internal_search(m_root, key)->value;
+	}
+	#endif
+
 };
-
-
-
-
-/**
-*Types
-**/
-#define aae_RBTree(TYPE, VALUE)					__rb_tree_##VALUE##TYPE
-#define aae_RBTreeNode(TYPE, VALUE)				__rb_tree_##VALUE##TYPE::__node
-
 
 
 /**
@@ -356,10 +371,10 @@ struct __AAE_RB_TREE(AAE_RB_TREE_NAME) /* __rb_tree_##AAE_RB_TREE_KEY_TYPE -eg. 
 #undef AAE_RB_TREE_VALUE_TYPE
 #endif
 
-#ifdef AAE_RB_TREE_VALUE_IDENTITY
-#undef AAE_RB_TREE_VALUE_IDENTITY
-#endif
-
 #ifdef AAE_RB_TREE_MEMORY_ARENA
 #undef AAE_RB_TREE_MEMORY_ARENA
+#endif
+
+#ifdef AAE_RB_TREE_KEY_COMPARE_FUNCTION
+#undef AAE_RB_TREE_KEY_COMPARE_FUNCTION
 #endif

@@ -5,12 +5,10 @@
 #include <stdint.h>
 
 
-
 typedef int64_t i64;
 typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t i8;
-
 
 
 typedef uint64_t u64;

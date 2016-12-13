@@ -17,7 +17,8 @@ extern aae_allocator aae_mallocator;
 
 
 
-#define AAE_RB_TREE_KEY_TYPE r32
+#define AAE_RB_TREE_NAME test_tree
+#define AAE_RB_TREE_KEY_TYPE i32
 #define AAE_RB_TREE_VALUE_TYPE const_byte_ptr
 #define AAE_RB_TREE_MEMORY_ARENA aae_mallocator
 #include "aae_utils/defs/aae_rb_tree.def"
@@ -27,13 +28,25 @@ extern aae_allocator aae_mallocator;
 void* function(void* key)
 {
 	
-	aae_RBTree(r32, const_byte_ptr) *test = AAE_NEW(aae_RBTree(r32, const_byte_ptr), aae_mallocator);
-	test->insert(5.2, "This is a message!\n");
-	test->insert(7.45, "Thread 2:");
-	test->insert(9.13, "lol9");
-	test->insert(3.14, "Fucking panzers!");
-	test->insert(2.113, "Lolipop!");
-	test->insert(1.71, "Hello World!\n");
+	test_tree *test = AAE_NEW(test_tree, aae_mallocator);
+	test->insert(52, "This is a message! - ");
+	test->insert(745, "Thread 2: - ");
+	test->insert(913, "lol9 - ");
+	test->insert(314, "Fucking panzers! - ");
+	test->insert(2113, "Lolipop! - ");
+	test->insert(171, "Hello World3! - ");
+	test->insert(171, "lol55 - ");
+	test->insert(823, "This is a test! - ");
+
+
+	test_tree::__node* n = test->__internal_search(test->m_root, 52);
+	for (;n!=test->m_nil;n=__rb_tree_next(test, n))
+	{
+		aae_write(stderr, n->value, aae_strlen(n->value));
+		aae_write(stderr, ((n->color == 0) ? "Black\n" : "Red\n"), ((n->color == 0) ? 6 : 4));
+	}
+
+
 	AAE_DELETE(test, aae_mallocator);
 	return AAE_NULL;
 }
@@ -45,8 +58,8 @@ AAE_EXTERN_TOOL i32 aae_main()
 
 
 	pthread_t thread_id;
-	pthread_create(&thread_id, AAE_NULL, &function, AAE_NULL);
-	pthread_join(thread_id, AAE_NULL);
+	pthread_create(&thread_id, AAE_NULL, &function, NULL);
+	pthread_join(thread_id, NULL);
 	return 0;
 
 }
