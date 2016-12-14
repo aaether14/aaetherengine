@@ -29,21 +29,31 @@ void* function(void* key)
 {
 	
 	test_tree *test = AAE_NEW(test_tree, aae_mallocator);
-	test->insert(52, "This is a message! - ");
-	test->insert(745, "Thread 2: - ");
-	test->insert(913, "lol9 - ");
-	test->insert(314, "Fucking panzers! - ");
-	test->insert(2113, "Lolipop! - ");
-	test->insert(171, "Hello World3! - ");
-	test->insert(171, "lol55 - ");
-	test->insert(823, "This is a test! - ");
-
+	test->insert(52, "52 - ");
+	test->insert(745, "745 - ");
+	test->insert(913, "913 - ");
+	test->insert(314, "314 - ");
+	test->insert(2113, "2113 - ");
+	test->insert(171, "171 - ");
+	test->insert(171, "171 - ");
+	test->insert(823, "823 - ");
+	test->insert(2341, "2341 - ");
+	test->insert(55, "55 - ");
+	test->remove(314);
+	test->insert(1000, "1000 - ");
+	test->insert(172, "172 - ");
+	test->remove(823);
 
 	test_tree::__node* n = test->__internal_search(test->m_root, 52);
 	for (;n!=test->m_nil;n=__rb_tree_next(test, n))
 	{
 		aae_write(stderr, n->value, aae_strlen(n->value));
-		aae_write(stderr, ((n->color == 0) ? "Black\n" : "Red\n"), ((n->color == 0) ? 6 : 4));
+		aae_write(stderr, ((n->color == 0) ? "Black " : "Red "), ((n->color == 0) ? 6 : 4));
+		if (n->left != test->m_nil)
+			aae_write(stderr, n->left->value, aae_strlen(n->left->value));
+		if (n->right != test->m_nil)
+			aae_write(stderr, n->right->value, aae_strlen(n->right->value));
+		aae_write(stderr, "\n", 1);
 	}
 
 

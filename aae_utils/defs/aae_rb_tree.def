@@ -6,7 +6,9 @@ Code generation for red/black tree with TYPE keys
 AAE_RB_TREE_KEY_TYPE must be defined
 AAE_RB_TREE_VALUE_TYPE may be defined for key/value pairs
 AAE_RB_TREE_MEMORY_ARENA must de defined - see aae_allocators.h for further reference
-AAE_RB_TREE_KEY_COMPARE_FUNCTION must be defined if < operator is invalid for provided key type 
+AAE_RB_TREE_KEY_COMPARE_FUNCTION must be defined if < operator is invalid for provided key type
+AAE_RB_TREE_KEY_DTOR may be defined in order to customly delete the key of deleted nodes
+AAE_RB_TREE_VALUE_DTOR may be defined in order to customly delete the value of deleted nodes
 default compare function: (a, b) -> ((a==b)?0:((a<b)?-1:1))
 Features:
 -insert nodes
@@ -27,11 +29,11 @@ Features:
 
 
 template <typename TREE, typename NODE>
-void __rb_tree_left_rotate(TREE * tree, NODE * x)
+void __rb_tree_left_rotate(TREE* tree, NODE* x)
 {
 	
 
-	NODE * y = x->right;
+	NODE* y = x->right;
 	x->right = y->left;
 
 
@@ -58,11 +60,11 @@ void __rb_tree_left_rotate(TREE * tree, NODE * x)
 
 
 template <typename TREE, typename NODE>
-void __rb_tree_right_rotate(TREE * tree, NODE * y)
+void __rb_tree_right_rotate(TREE* tree, NODE* y)
 {
 
 
-	NODE * x = y->left;
+	NODE* x = y->left;
 	y->left = x->right;
 
 
@@ -92,64 +94,50 @@ void __rb_tree_balance(TREE* tree, NODE* new_node)
 
 	while (new_node->parent->color == NODE::red)
 	{
-
 		if (new_node->parent == new_node->parent->parent->left)
 		{
-
 			NODE* right_uncle = new_node->parent->parent->right;
 			if (right_uncle->color == NODE::red)
 			{
-
 				right_uncle->color = NODE::black;
 				new_node->parent->color = NODE::black;
 				new_node->parent->parent->color = NODE::red;
 				new_node = new_node->parent->parent;
-
 			}
 			else
 			{
-
 				if (new_node == new_node->parent->right)
 				{
 
 					new_node = new_node->parent;
 					__rb_tree_left_rotate(tree, new_node);
-				}
-				
+				}		
 				new_node->parent->color = NODE::black;
 				new_node->parent->parent->color = NODE::red;
 				__rb_tree_right_rotate(tree, new_node->parent->parent);
-
 			}
-
 		}
 		else
 		{
-
 			NODE* left_uncle = new_node->parent->parent->left;
 			if (left_uncle->color == NODE::red)
 			{
-
 				left_uncle->color = NODE::black;
 				new_node->parent->color = NODE::black;
 				new_node->parent->parent->color = NODE::red;
 				new_node = new_node->parent->parent;
-
 			}
 			else
 			{
-
 				if (new_node == new_node->parent->left)
 				{
 
 					new_node = new_node->parent;
 					__rb_tree_right_rotate(tree, new_node);
-				}
-				
+				}			
 				new_node->parent->color = NODE::black;
 				new_node->parent->parent->color = NODE::red;
 				__rb_tree_left_rotate(tree, new_node->parent->parent);
-
 			}
 		}
 	}
@@ -157,7 +145,81 @@ void __rb_tree_balance(TREE* tree, NODE* new_node)
 
 
 template <typename TREE, typename NODE>
-NODE* __rb_tree_next(TREE * tree, NODE * x)
+void __tb_tree_fix_after_deletion(TREE* tree, NODE* x)
+{
+
+	NODE* w;
+	while (x->color != NODE::red && x != tree->m_root)
+	{
+		if (x == x->parent->left)
+		{
+			w = x->parent->right;
+			if (w->color == NODE::red)
+			{
+				w->color = NODE::black;
+				x->parent->color = NODE::red;
+				__rb_tree_left_rotate(tree, x->parent);
+				w = x->parent->right;
+			}
+			if (w->right->color != NODE::red && w->left->color != NODE::red)
+			{
+				w->color = NODE::red;
+				x = x->parent;
+			}
+			else
+			{
+				if (w->right->color != NODE::red)
+				{
+					w->left->color = NODE::black;
+					w->color = NODE::red;
+					__rb_tree_right_rotate(tree, w);
+					w = x->parent->right;
+				}
+				w->color = x->parent->color;
+				x->parent->color = NODE::black;
+				w->right->color = NODE::black;
+				__rb_tree_left_rotate(tree, x->parent);
+				x = tree->m_root;
+			}
+		}
+		else
+		{
+			w = x->parent->left;
+			if (w->color == NODE::red)
+			{
+				w->color = NODE::black;
+				x->parent->color = NODE::red;
+				__rb_tree_right_rotate(tree, x->parent);
+				w = x->parent->left;
+			}
+			if (w->right->color != NODE::red && w->left->color != NODE::red)
+			{
+				w->color = NODE::red;
+				x = x->parent;
+			}
+			else
+			{
+				if (w->left->color != NODE::red)
+				{
+					w->right->color = NODE::black;
+					w->color = NODE::red;
+					__rb_tree_left_rotate(tree, w);
+					w = x->parent->left;
+				}
+				w->color = x->parent->color;
+				x->parent->color = NODE::black;
+				w->left->color = NODE::black;
+				__rb_tree_right_rotate(tree, x->parent);
+				x = tree->m_root;
+			}
+		}
+	}
+	x->color = NODE::black;
+}
+
+
+template <typename TREE, typename NODE>
+NODE* __rb_tree_next(TREE* tree, NODE* x)
 {
 
 	if (x == tree->m_nil)
@@ -226,6 +288,15 @@ struct AAE_RB_TREE_NAME
 		AAE_RB_TREE_VALUE_TYPE value;
 		#endif
 		__node *parent, *left, *right;
+		~__node()
+		{
+			#ifdef AAE_RB_TREE_KEY_DTOR
+			AAE_RB_TREE_KEY_DTOR(key);
+			#endif
+			#ifdef AAE_RB_TREE_VALUE_DTOR
+			AAE_RB_TREE_VALUE_DTOR(value);
+			#endif
+		}
 	} *m_root, *m_nil;
 	u8 m_action_flag; /** action flag will be true to suggest different behavior **/
 
@@ -272,7 +343,54 @@ struct AAE_RB_TREE_NAME
 
 	}
 
-	__node* __internal_insert_bst(__node * parent, __node *&root, AAE_RB_TREE_KEY_TYPE key)
+
+	void remove(AAE_RB_TREE_KEY_TYPE key)
+	{
+
+		__node * node_to_delete = __internal_search(m_root, key);
+		if (node_to_delete == m_nil)
+			return;
+
+		__node * y = (node_to_delete->left == m_nil || node_to_delete->right == m_nil) ? node_to_delete : __rb_tree_next(this, node_to_delete);
+		__node * x = (y->left == m_nil) ? y->right : y->left;
+		x->parent = y->parent;
+		if (x->parent == m_root)
+		{
+			m_root->left = x;
+		}
+		else
+		{
+			if (y == y->parent->left)
+				y->parent->left = x;
+			else
+				y->parent->right = x;
+		}
+		if (y != node_to_delete)
+		{
+			if (y->color == __node::black)
+				__tb_tree_fix_after_deletion(this, x);
+			y->left = node_to_delete->left;
+			y->right = node_to_delete->right;
+			y->parent = node_to_delete->parent;
+			y->color = node_to_delete->color;
+			node_to_delete->left->parent = node_to_delete->right->parent = y;
+			if (node_to_delete == node_to_delete->parent->left)
+				node_to_delete->parent->left = y; 
+			else 
+				node_to_delete->parent->right = y;
+			AAE_DELETE(node_to_delete, AAE_RB_TREE_MEMORY_ARENA);
+		}
+		else
+		{
+			if (y->color == __node::black)
+				__tb_tree_fix_after_deletion(this, x);
+			AAE_DELETE(y, AAE_RB_TREE_MEMORY_ARENA);
+		}
+
+	}
+
+
+	__node* __internal_insert_bst(__node* parent, __node*& root, AAE_RB_TREE_KEY_TYPE key)
 	{ 
 
 
@@ -315,7 +433,7 @@ struct AAE_RB_TREE_NAME
 	
 	}
 
-	__node* __internal_search(__node * current_node, AAE_RB_TREE_KEY_TYPE key)
+	__node* __internal_search(__node* current_node, AAE_RB_TREE_KEY_TYPE key)
 	{
 
 		if (!current_node)
@@ -373,6 +491,14 @@ struct AAE_RB_TREE_NAME
 
 #ifdef AAE_RB_TREE_MEMORY_ARENA
 #undef AAE_RB_TREE_MEMORY_ARENA
+#endif
+
+#ifdef AAE_RB_TREE_KEY_DTOR
+#undef AAE_RB_TREE_KEY_DTOR
+#endif
+
+#ifdef AAE_RB_TREE_VALUE_DTOR
+#undef AAE_RB_TREE_VALUE_DTOR
 #endif
 
 #ifdef AAE_RB_TREE_KEY_COMPARE_FUNCTION
