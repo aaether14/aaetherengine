@@ -6,4 +6,4 @@
 	printf "Building library $1...\n"
 	mkdir -p build/lib
 	rm -f build/lib/$1.so	
-	gcc -shared -fpic -O3 $2 lib/$1.c -o build/lib/lib$1.so
+	gcc -shared -fpic -O3 $2 $3 $4 -std=gnu99 lib/$1.c -o build/lib/lib$1.so

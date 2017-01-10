@@ -1,8 +1,9 @@
 /**
----aae_rb_tree.def - Dinescu Stefan-Cristian aka Aaether - 10.12.2016
+---aae_rb_tree.def - Dinescu Stefan-Cristian aka Aaether - 14.12.2016(lu)
 ----------------------------------------------------------------------
 Code generation for red/black tree with TYPE keys
 -don't ever use variables, functions etc. starting with "__". Only the framework has this right.
+AAE_RB_TREE_NAME must be defined
 AAE_RB_TREE_KEY_TYPE must be defined
 AAE_RB_TREE_VALUE_TYPE may be defined for key/value pairs
 AAE_RB_TREE_MEMORY_ARENA must de defined - see aae_allocators.h for further reference
@@ -15,6 +16,7 @@ Features:
 -attempting to insert the same key twice will result in an update (if tree supports values)
 -search for nodes
 -remove nodes
+-internal functions are to be used on your own risk
 **/
 
 
@@ -245,6 +247,61 @@ NODE* __rb_tree_next(TREE* tree, NODE* x)
 }
 
 
+template <typename TREE, typename NODE>
+NODE* __rb_tree_previous(TREE* tree, NODE* x)
+{
+
+	if (x == tree->m_nil)
+		return tree->m_nil;
+
+	NODE* y = x->left;
+	if (y != tree->m_nil)
+	{
+		while (y->right != tree->m_nil)
+			y = y->right;
+		return y;
+	}
+	else
+	{
+		y = x->parent;
+		while (x == y->left)
+		{
+			x = y;
+			y = x->parent;
+		}
+		return y;
+	}
+}
+
+
+template <typename TREE>
+typename TREE::__node* __rb_tree_first(TREE * tree)
+{
+
+	if (tree->m_root == tree->m_nil)
+		return tree->m_nil;
+
+	typename TREE::__node* it = tree->m_root;
+	while (it->left != tree->m_nil)
+		it = it->left;
+	return it;
+}
+
+
+template <typename TREE>
+typename TREE::__node* __rb_tree_last(TREE * tree)
+{
+
+	if (tree->m_root == tree->m_nil)
+		return tree->m_nil;
+
+	typename TREE::__node* it = tree->m_root;
+	while (it->right != tree->m_nil)
+		it = it->right;
+	return it;
+}
+
+
 enum AAE_RB_TREE_ERROR_CODES
 {
 	rb_tree_no_error = 0,
@@ -279,7 +336,6 @@ enum AAE_RB_TREE_ERROR_CODES
 struct AAE_RB_TREE_NAME 
 {
 
-
 	struct __node /** a red/black node **/
 	{	
 		enum {black, red} color;
@@ -298,7 +354,8 @@ struct AAE_RB_TREE_NAME
 			#endif
 		}
 	} *m_root, *m_nil;
-	u8 m_action_flag; /** action flag will be true to suggest different behavior **/
+	u8 m_action_flag; /** m_action_flag will be true to suggest different behavior **/
+	aae_size_t m_size; /** is the number of nodes in the tree **/
 
 
 	AAE_RB_TREE_NAME()
@@ -315,7 +372,17 @@ struct AAE_RB_TREE_NAME
 			m_nil->parent = m_nil->left = m_nil->right = m_nil;
 			m_nil->color = __node::black;
 			m_root = m_nil;
+			m_action_flag = 0;
+			m_size = 0;
 		}
+	}
+
+
+	~AAE_RB_TREE_NAME()
+	{
+		aae_set_error(rb_tree_no_error);
+		__internal_delete_nodes(m_root);
+		AAE_DELETE(m_nil, AAE_RB_TREE_MEMORY_ARENA);
 	}
 
 
@@ -347,6 +414,7 @@ struct AAE_RB_TREE_NAME
 	void remove(AAE_RB_TREE_KEY_TYPE key)
 	{
 
+		aae_set_error(rb_tree_no_error);
 		__node * node_to_delete = __internal_search(m_root, key);
 		if (node_to_delete == m_nil)
 			return;
@@ -386,20 +454,30 @@ struct AAE_RB_TREE_NAME
 				__tb_tree_fix_after_deletion(this, x);
 			AAE_DELETE(y, AAE_RB_TREE_MEMORY_ARENA);
 		}
+		--m_size;
 
+	}
+
+
+	void __internal_delete_nodes(__node* root)
+	{
+		if (root->left != m_nil)
+			__internal_delete_nodes(root->left);
+		if (root->right != m_nil)
+			__internal_delete_nodes(root->right);
+		if (root != m_nil)
+		AAE_DELETE(root, AAE_RB_TREE_MEMORY_ARENA);
 	}
 
 
 	__node* __internal_insert_bst(__node* parent, __node*& root, AAE_RB_TREE_KEY_TYPE key)
 	{ 
 
-
 		if (!parent || !root)
 		{
 			aae_set_error(rb_tree_could_not_insert_on_invalid_node);
 			return AAE_NULL;
 		}
-
 
 		if (root == m_nil)
 		{
@@ -413,6 +491,7 @@ struct AAE_RB_TREE_NAME
 			root->key = key;
 			root->left = root->right = m_nil;
 			root->parent = parent;
+			++m_size;
 			return root;
 
 		}
@@ -474,9 +553,7 @@ struct AAE_RB_TREE_NAME
 };
 
 
-/**
-*Undefine defines
-**/
+/** Undefine defines **/
 #ifdef AAE_RB_TREE_NAME
 #undef AAE_RB_TREE_NAME
 #endif

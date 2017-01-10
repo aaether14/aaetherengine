@@ -4,14 +4,11 @@
 
 
 #include "aae_lib_allocator.h"
-
-
-
 struct aae_allocator
 {
 	
-	void * Allocate(aae_size_t size);
-	void Free(void * start);
+	void* Allocate(aae_size_t size);
+	void Free(void* start);
 
 };
 #endif

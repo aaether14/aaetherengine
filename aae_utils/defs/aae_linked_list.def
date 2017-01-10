@@ -1,59 +1,46 @@
 /**
----aae_linked_list.def - Dinescu Stefan-Cristian aka Aaether - 31.07.2016
+---aae_linked_list.def - Dinescu Stefan-Cristian aka Aaether - 14.12.2016(lu)
 ----------------------------------------------------------------------
 Code generation for linked list holding TYPE data
 -don't ever use variables, functions etc. starting with "__". Only the framework has this right.
+AAE_LINKED_LIST_NAME must be defined
+AAE_LINKED_LIST_DATA_TYPE must be defined
+AAE_LINKED_LIST_MEMORY_ARENA must de defined - see aae_allocators.h for further reference
+AAE_RB_TREE_DATA_DTOR may be defined in order to customly delete the data of deleted nodes
 Features:
 -push a new node to the front of the list
 -push a new node to the back of the list
-Safe types:
--aae_LinkedList(TYPE)
--aae_LinkedListElement(TYPE)
 **/
-
-
-
-/**
-List of list members (better don't modify this using other means than defined functions):
-m_first - the first node in the list
-m_last - the last node in the list
-m_size - the size of the list
-----------------------------------
-m_it - an iterator to iterate list nodes
-**/
-
-
-
 
 
 #ifndef AAE_LINKED_LIST_DEF
 #define AAE_LINKED_LIST_DEF
 #include "aae_defines.h"
 #include "aae_memory_allocator.h"
+#include "error/aae_error.h"
 
 
+/** linked list for loop **/
+#define aae_LinkedListForEach(list) for (list->m_it = list->m_first; list->m_it != AAE_NULL; list->m_it = list->m_it->m_next)
 
-/**
-*Posible return values for the linked list
-**/
-	enum AAE_LINKED_LIST_RETURN_VALUES
-	{
-		AAE_LINKED_LIST_ALLOCATION_ERROR = -1,
-		AAE_LINKED_LIST_FALSE = 0,
-		AAE_LINKED_LIST_TRUE = 1,
-		AAE_LINKED_LIST_SUCCESS = 2
-	};
+
+enum AAE_LINKED_LIST_ERROR_CODES
+{
+	linked_list_no_error,
+	linked_list_could_not_allocate_new_node
+};
+
 #endif /** AAE_LINKED_LIST_DEF **/
 
 
+#ifndef AAE_LINKED_LIST_NAME
+#error "Must define AAE_LINKED_LIST_NAME!"
+#endif 
 
 
-
-
-#ifndef AAE_LINKED_LIST_TYPE
-#error "Must define AAE_LINKED_LIST_TYPE!"
+#ifndef AAE_LINKED_LIST_DATA_TYPE
+#error "Must define AAE_LINKED_LIST_DATA_TYPE!"
 #endif
-
 
 
 #ifndef AAE_LINKED_LIST_MEMORY_ARENA
@@ -61,129 +48,157 @@ m_it - an iterator to iterate list nodes
 #endif
 
 
+struct AAE_LINKED_LIST_NAME
+{	
+		
+	struct __elem 
+	{
+		AAE_LINKED_LIST_DATA_TYPE m_data;
+		__elem * m_next;
+		~__elem()
+		{
+			#ifdef AAE_LINKED_LIST_DATA_DTOR
+			AAE_LINKED_LIST_DATA_DTOR(m_data);
+			#endif
+		}
+	} *m_first, *m_last, *m_it;
+	aae_size_t m_size; /** number of nodes in the list **/
 
-/**
-*Indirection is used in order to achieve defined token concatenation
-**/
-#define __AAE_LINKED_LIST(NAME) INDIRECT_TOKENPASTE(INDIRECT_TOKENPASTE(__linked_list, NAME), AAE_LINKED_LIST_TYPE)
+
+	AAE_LINKED_LIST_NAME()
+	{
+		m_first = m_last = m_it = AAE_NULL;
+		m_size = 0;
+	}
 
 
+	~AAE_LINKED_LIST_NAME()
+	{
+		aae_set_error(linked_list_no_error);
+		m_it = m_first;
+		__elem* pTempElem = AAE_NULL;
+		while (m_it != AAE_NULL)
+		{
+
+			pTempElem = m_it;
+			m_it = m_it->m_next;
+			AAE_DELETE(pTempElem, AAE_LINKED_LIST_MEMORY_ARENA);
+
+		}
+		m_first = m_last = m_it = AAE_NULL;
+		m_size = 0;
+	}
 
 
-	struct __AAE_LINKED_LIST(_) /** __linked_list_##AAE_LINKED_LIST_TYPE -eg. __linked_list_float **/
+	void push_back(AAE_LINKED_LIST_DATA_TYPE data)
 	{	
-		
-		
-		struct __elem /** a node in the linked list **/
+
+		aae_set_error(linked_list_no_error);
+		__elem* new_element = AAE_NEW(__elem, AAE_LINKED_LIST_MEMORY_ARENA);
+
+		if (new_element == AAE_NULL)
 		{
-			AAE_LINKED_LIST_TYPE m_data;
-			__elem * m_next;
-		};
-
-		
-
-		/** member data **/
-		aae_size_t m_size;
-		__elem * m_first; /** first member in the list **/
-		__elem * m_last; /**last member in the list **/
-		__elem * m_it; /** default iterator **/
-
-
-
-		__AAE_LINKED_LIST(_)()
-		{
-			
-			m_first = m_last = m_it = AAE_NULL;
-			m_size = 0;
-
+			aae_set_error(linked_list_could_not_allocate_new_node);
+			return;
 		}
 
+		new_element->m_next = AAE_NULL; 
+		new_element->m_data = data;
+		if (m_first == AAE_NULL)
+		{ 
+			m_first = m_last = new_element;
+		}
+		else 
+		{ 
+			m_last->m_next = new_element; 
+			m_last = new_element; 
+		}
+		++m_size;
+	}
 
-		~__AAE_LINKED_LIST(_)()
+
+	void push_front(AAE_LINKED_LIST_DATA_TYPE data)
+	{
+		
+		aae_set_error(linked_list_no_error);
+		__elem* new_element = AAE_NEW(__elem, AAE_LINKED_LIST_MEMORY_ARENA);
+
+		if (new_element == AAE_NULL)
 		{
-
-			m_it = m_first;
-			__elem * pTempElem = AAE_NULL;
-
-			while (m_it != AAE_NULL)
-			{
-
-				pTempElem = m_it;
-				m_it = m_it->m_next;
-				AAE_DELETE(pTempElem, AAE_LINKED_LIST_MEMORY_ARENA);
-
-			}
-
-			m_first = m_last = m_it = AAE_NULL;
-
+			aae_set_error(linked_list_could_not_allocate_new_node);
+			return;
 		}
 
-	
-		
-		AAE_LINKED_LIST_RETURN_VALUES push_back(AAE_LINKED_LIST_TYPE tValue)
-		{
-		
-			__elem * pNewElem = AAE_NEW(__elem, AAE_LINKED_LIST_MEMORY_ARENA);
-			if (pNewElem == AAE_NULL) return AAE_LINKED_LIST_ALLOCATION_ERROR;
-
-
-			pNewElem->m_next = AAE_NULL; pNewElem->m_data = tValue;
-			if (!m_first) m_first = m_last = pNewElem;
-			else { m_last->m_next = pNewElem; m_last = pNewElem; }
-
-
-			m_size++;
-			return AAE_LINKED_LIST_SUCCESS;
+		new_element->m_data = data;
+		if (m_first == AAE_NULL)
+		{ 
+			new_element->m_next = AAE_NULL; 
+			m_first = m_last = new_element;
 		}
+		else 
+		{ 
+			new_element->m_next = m_first;
+			m_first = new_element;
+		}
+		++m_size;
+	}	
 
 
-
-		AAE_LINKED_LIST_RETURN_VALUES push_front(AAE_LINKED_LIST_TYPE tValue)
+	void pop_back()
+	{
+		aae_set_error(linked_list_no_error);
+		if (m_size == 0)
+			return;
+		else if (m_size == 1)
 		{
-
-			__elem * pNewElem = AAE_NEW(__elem, AAE_LINKED_LIST_MEMORY_ARENA);
-			if (pNewElem == AAE_NULL) return AAE_LINKED_LIST_ALLOCATION_ERROR;
-
-
-			pNewElem->m_next = AAE_NULL; pNewElem->m_data = tValue;
-			if (!m_first) m_first = m_last = pNewElem;
-			else { pNewElem->m_next = m_first; m_first = pNewElem; }
-
-
-			m_size++;
-			return AAE_LINKED_LIST_SUCCESS;
-
-		}	
-
-
-	};
+			AAE_DELETE(m_last, AAE_LINKED_LIST_MEMORY_ARENA);
+			m_first = m_last = AAE_NULL;
+			--m_size;
+			return;
+		}
+		m_it = m_first;
+		while (m_it->m_next != m_last)
+			m_it = m_it->m_next;
+		m_it->m_next = AAE_NULL;
+		AAE_DELETE(m_last, AAE_LINKED_LIST_MEMORY_ARENA);
+		m_last = m_it;
+		--m_size;
+	}
 
 
+	void pop_front()
+	{
+		aae_set_error(linked_list_no_error);
+		if (m_size == 0)
+			return;
+		else if (m_size == 1)
+		{
+			AAE_DELETE(m_last, AAE_LINKED_LIST_MEMORY_ARENA);
+			m_first = m_last = AAE_NULL;
+			--m_size;
+			return;
+		}
+		__elem* pTempElem = m_first;
+		m_first = m_first->m_next; 
+		AAE_DELETE(pTempElem, AAE_LINKED_LIST_MEMORY_ARENA);
+	}
+
+};
 
 
+/** Undefine defines **/
+#ifdef AAE_LINKED_LIST_NAME
+#undef AAE_LINKED_LIST_NAME
+#endif
 
-
-/**
-*Types
-**/
-#define aae_LinkedList(TYPE)					__linked_list_##TYPE /** Defines a linked list with nodes holding data of a certain TYPE **/
-#define aae_LinkedListElement(TYPE)				__linked_list_##TYPE::__elem /** Defines a node holding data of TYPE **/
-
-
-/**
-*Useful
-**/
-#define aae_LinkedListForEach(list)				for (list->m_it = list->m_first; list->m_it != NULL; list->m_it = list->m_it->m_next)
-
-
-/**
-*Undefine defines
-**/
 #ifdef AAE_LINKED_LIST_TYPE
 #undef AAE_LINKED_LIST_TYPE
 #endif
 
-
 #ifdef AAE_LINKED_LIST_MEMORY_ARENA
 #undef AAE_LINKED_LIST_MEMORY_ARENA
+#endif
+
+#ifdef AAE_LINKED_LIST_DATA_DTOR
+#undef AAE_RB_TREE_DATA_DTOR
 #endif
