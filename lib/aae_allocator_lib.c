@@ -259,7 +259,7 @@ static ProcessorHeap* FindHeap(size_t size)
 	ProcessorHeap* c_heap; 
 	/** We need to fit both the object and the descriptor in a single block **/
 	size += sizeof(Descriptor*);
-	if (size > 1024) /** large block **/
+	if (size > 0x800) /** large block **/
 		return NULL;
   
 	c_heap = m_heaps[1];
@@ -281,15 +281,15 @@ void* aae_malloc(size_t size)
 	void* address;
 	if (!c_heap) 
 	{
-		address = os_alloc(size + 2 * sizeof(Descriptor*));
-		*((uintptr_t*)address) = size; /** encode the size of the large block **/
-		*((uintptr_t*)address + sizeof(Descriptor*)) = 0x1;
-		return (uintptr_t*)(address + 2 * sizeof(Descriptor*));
+		size_t header_size = 2 * sizeof(Descriptor*);
+		address = os_alloc(size + header_size);
+		*((uintptr_t*)address) = header_size; /** encode the size of the large block **/
+		*((uintptr_t*)(address + header_size / 2)) |= 0x1;
+		return (uintptr_t*)(address + 2 * header_size);
 	}
 	while (1)
 	{
 		address = AllocateFromNewSuperblock(c_heap);	
-		fprintf(stderr, "%p\n", address);	
 		if (address) return address;
 	}
 }
@@ -299,9 +299,14 @@ void aae_free(void* start)
 {
 	if (!start) return;
 	Descriptor* c_descriptor = *((Descriptor**)(uintptr_t*)(start - sizeof(Descriptor*)));
-	fprintf(stderr, "%p\n", c_descriptor);	
 	if (large_block(c_descriptor))
 	{
-		fprintf(stderr, "Yes\n");
+		void* header_start = ((uintptr_t*)(start - 2 * sizeof(Descriptor*)));
+		size_t size = *((uintptr_t*)header_start);
+		os_dealloc(header_start, size);
+		return;
 	}
+	void* c_super_block = c_descriptor->m_super_block;
+	Anchor new_anchor, old_anchor;
+	new_anchor = old_anchor = c_descriptor->m_anchor;
 }
