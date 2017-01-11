@@ -36,9 +36,10 @@ AAE_EXTERN_TOOL i32 aae_main()
 {
 	pthread_t thread_id;
 	pthread_create(&thread_id, AAE_NULL, &function, NULL);
-	char* str = (char*)aae_malloc(sizeof(char*));
-	str = "This is a test!\n";
-	aae_write(stderr, str, aae_strlen(str));
+	char** str = (char**)aae_malloc(sizeof(char**));
+	*str = "This is a test!\n";
+	aae_write(stderr, *str, aae_strlen(*str));
+	aae_free(str);
 	pthread_join(thread_id, NULL);
 	return 0;
 }

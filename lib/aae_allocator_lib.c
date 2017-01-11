@@ -1,6 +1,6 @@
+/** this allocator was designed for x86/_64 architecture **/
 #include <stdint.h>
 #include <stdio.h>
-
 
 #ifndef NULL
 #define NULL ((void*)0)
@@ -17,6 +17,13 @@
 
 
 static size_t m_page_size = 0; 
+static void compute_page_size()
+{
+	if (!m_page_size) /** get page size if you haven't done it yet **/
+		#ifdef AAE_LINUX_PLATFORM
+		m_page_size = sysconf(_SC_PAGESIZE);
+		#endif
+}
 
 
 /** organize a chunk of memory into a linked list **/
@@ -30,7 +37,7 @@ ptr->m_next = NULL;
 /** first sizeof(void*) bytes of unreserved hold liniar id of next block **/
 #define organize_list(start_ptr, count, stride)					\
 void* ptr = start_ptr;								\
-for (int32_t it = 1; it < count - 1; ++it)					\
+for (int32_t it = 0; it < count - 1; ++it)					\
 	*((uintptr_t*)(ptr + it * stride)) = (it + 1);
 
 
@@ -39,7 +46,7 @@ struct __hp_record
 {
 	HPRecord* volatile m_next;
 	void* m_hazard_ptr;
-	volatile uintptr_t m_is_active;
+	uintptr_t m_is_active;
 };
 static HPRecord* volatile m_shared_hp_list_head = NULL;
 static HPRecord* volatile m_freelist_hp_head = NULL;
@@ -58,14 +65,12 @@ static HPRecord* allocate_hp()
 		}
 		else
 		{
-			if (!m_page_size) /** get page size if you haven't done it yet **/
-				#ifdef AAE_LINUX_PLATFORM
-				m_page_size = sysconf(_SC_PAGESIZE);
-				#endif
+			compute_page_size();
 			c_hp = os_alloc(m_page_size);
 			/** oragnize hazard pointer superblock in a linked list **/
 			organize_linked_list(c_hp, m_page_size, HPRecord)
 
+			__asm__ __volatile__ ("sfence" : : : "memory");
 			if (__sync_bool_compare_and_swap((void** volatile)&m_freelist_hp_head, NULL, c_hp->m_next)) break;
 			os_dealloc(c_hp, m_page_size);
 		}
@@ -86,12 +91,12 @@ static HPRecord* acquire_hp()
 	c_hp = allocate_hp();
 	c_hp->m_is_active = 1;
 	c_hp->m_hazard_ptr = NULL;
-
 	HPRecord* old_head;
 	do
 	{
 		old_head = m_shared_hp_list_head;
 		c_hp->m_next = old_head;
+		__asm__ __volatile__ ("sfence" : : : "memory");
 	}while(!__sync_bool_compare_and_swap((void** volatile)&m_shared_hp_list_head, old_head, c_hp));
 	return c_hp;
 }
@@ -104,10 +109,11 @@ static void release_hp(HPRecord* hp)
 }
 
 
-#define SUPERBLOCKSIZE 256
-#define MAXCREDITS 1<<6
+#define SUPERBLOCKSIZE 0x2000
+#define MAXCREDITS 0x40
 #define set_active_credits(active, credits) active |= credits
-#define get_active_credtis(active) active & ((1<<6)-1)
+#define get_active_credtis(active) active & ((0x1<<0x6)-0x1)
+#define large_block(descriptor) (uintptr_t)descriptor & 0x1
 typedef enum
 {
 	ACTIVE,
@@ -167,7 +173,7 @@ __thread ProcessorHeap* m_heaps[sizeof(m_size_classes) / sizeof(SizeClass)] = {}
 static Descriptor* AllocateDescriptor()
 {
 
-	Descriptor *c_descriptor = NULL;
+	Descriptor *c_descriptor;
 	for (;;)
 	{
 		/** we only break the infinite loop at the end so we can give the thread the chance to release hazard pointer **/
@@ -185,14 +191,12 @@ static Descriptor* AllocateDescriptor()
 		}
 		else
 		{
-			if (!m_page_size) /** get page size if you haven't done it yet **/
-				#ifdef AAE_LINUX_PLATFORM
-				m_page_size = sysconf(_SC_PAGESIZE);
-				#endif
+			compute_page_size();
 			c_descriptor = os_alloc(m_page_size);
 			organize_linked_list(c_descriptor, m_page_size, Descriptor)
 			/** organize descriptor super block in a linked list **/
 
+			__asm__ __volatile__ ("sfence" : : : "memory");
 			success = __sync_bool_compare_and_swap((void** volatile)&m_descriptor_list_head, NULL, c_descriptor->m_next);
 			if (!success) /** some other thread got ahead of us and allocated a descriptor block - abort mission **/
 				os_dealloc(c_descriptor, m_page_size);
@@ -226,18 +230,18 @@ static void* AllocateFromNewSuperblock(ProcessorHeap* heap)
 
 	uintptr_t new_active;
 	organize_list(c_descriptor->m_super_block, c_descriptor->m_number_of_blocks, c_descriptor->m_block_size);
-	void* ptr2 = c_descriptor->m_super_block;
-	for (int32_t it = 0; it < c_descriptor->m_number_of_blocks - 1; ++it);
 	*((void**)&new_active) = (void*)c_descriptor;
-	set_active_credits(new_active, (min(c_descriptor->m_number_of_blocks - 1, MAXCREDITS) - 1));
+	set_active_credits(new_active, (min(c_descriptor->m_number_of_blocks - 1, MAXCREDITS) - 1)); /** n credits means n+1 available blocks **/
 
 	c_descriptor->m_anchor.m_available = 1;
-	c_descriptor->m_anchor.m_count = max(((int64_t)c_descriptor->m_number_of_blocks - 1) - ((int64_t)get_active_credtis(new_active)), 0); 
+	c_descriptor->m_anchor.m_count = c_descriptor->m_number_of_blocks - get_active_credtis(new_active) - 2;
 	c_descriptor->m_anchor.m_state = ACTIVE; /** install it as the active superblock **/
-	if (__sync_bool_compare_and_swap((void** volatile)&heap->m_active, NULL, (void** volatile)&new_active))
+
+	__asm__ __volatile__ ("sfence" : : : "memory");
+	if (__sync_bool_compare_and_swap((void** volatile)&heap->m_active, NULL, new_active))
 	{
 		*((Descriptor**)c_descriptor->m_super_block) = c_descriptor;
-		return (void*)(c_descriptor->m_super_block + 1);
+		return (uintptr_t*)(c_descriptor->m_super_block + sizeof(Descriptor*));
 	}
 	else
 	{
@@ -254,14 +258,14 @@ static ProcessorHeap* FindHeap(size_t size)
 
 	ProcessorHeap* c_heap; 
 	/** We need to fit both the object and the descriptor in a single block **/
-	size += sizeof(void*);
+	size += sizeof(Descriptor*);
 	if (size > 1024) /** large block **/
 		return NULL;
   
 	c_heap = m_heaps[1];
 	if (c_heap == NULL) 
 	{
-		c_heap = mmap(NULL, sizeof(ProcessorHeap), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+		c_heap = os_alloc(sizeof(ProcessorHeap));
 		*((void**)&(c_heap->m_active)) = NULL;
 		c_heap->m_size_class = &m_size_classes[1];
 		m_heaps[1] = c_heap;
@@ -277,12 +281,16 @@ void* aae_malloc(size_t size)
 	void* address;
 	if (!c_heap) 
 	{
-		address = NULL;
-		return address;
+		address = os_alloc(size + 2 * sizeof(Descriptor*));
+		*((uintptr_t*)address) = size; /** encode the size of the large block **/
+		*((uintptr_t*)address + sizeof(Descriptor*)) = 0x1;
+		return (uintptr_t*)(address + 2 * sizeof(Descriptor*));
 	}
 	while (1)
 	{
-		return AllocateFromNewSuperblock(c_heap);
+		address = AllocateFromNewSuperblock(c_heap);	
+		fprintf(stderr, "%p\n", address);	
+		if (address) return address;
 	}
 }
 
@@ -290,4 +298,10 @@ void* aae_malloc(size_t size)
 void aae_free(void* start)
 {
 	if (!start) return;
+	Descriptor* c_descriptor = *((Descriptor**)(uintptr_t*)(start - sizeof(Descriptor*)));
+	fprintf(stderr, "%p\n", c_descriptor);	
+	if (large_block(c_descriptor))
+	{
+		fprintf(stderr, "Yes\n");
+	}
 }
