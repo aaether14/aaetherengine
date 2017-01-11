@@ -31,7 +31,7 @@ ptr->m_next = NULL;
 #define organize_list(start_ptr, count, stride)					\
 void* ptr = start_ptr;								\
 for (int32_t it = 1; it < count - 1; ++it)					\
-	*((uintptr_t*)(ptr+it)) = (it + 1);
+	*((uintptr_t*)(ptr + it * stride)) = (it + 1);
 
 
 typedef struct __hp_record HPRecord;
@@ -227,8 +227,7 @@ static void* AllocateFromNewSuperblock(ProcessorHeap* heap)
 	uintptr_t new_active;
 	organize_list(c_descriptor->m_super_block, c_descriptor->m_number_of_blocks, c_descriptor->m_block_size);
 	void* ptr2 = c_descriptor->m_super_block;
-	for (int32_t it = 1; it < c_descriptor->m_number_of_blocks - 1; ++it)
-	fprintf(stderr, "%u\n", *((uintptr_t*)(ptr2+5)));
+	for (int32_t it = 0; it < c_descriptor->m_number_of_blocks - 1; ++it);
 	*((void**)&new_active) = (void*)c_descriptor;
 	set_active_credits(new_active, (min(c_descriptor->m_number_of_blocks - 1, MAXCREDITS) - 1));
 
