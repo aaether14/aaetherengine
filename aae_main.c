@@ -36,26 +36,11 @@ AAE_EXTERN_TOOL i32 aae_main()
 {
 	pthread_t thread_id;
 	pthread_create(&thread_id, AAE_NULL, &function, NULL);
-	char* str = (char*)aae_malloc(7);
-	str[0] = 'h';
-	str[1] = 'e';
-	str[2] = 'l';
-	str[3] = 'l';
-	str[4] = 'o';
-	str[5] = '\n';
-	str[6] = '\0';
-	aae_write(stderr, str, aae_strlen(str));
-	aae_free(str);
-	char* str2 = (char*)aae_malloc(7);
-	str2[0] = 'h';
-	str2[1] = 'e';
-	str2[2] = 'l';
-	str2[3] = 'l';
-	str2[4] = '2';
-	str2[5] = '\n';
-	str2[6] = '\0';
-	aae_write(stderr, str2, aae_strlen(str2));
-	aae_free(str2);
+	for (int i = 0; i < 70; ++i)
+	{
+		void* ptr = aae_malloc(10);
+		aae_free(ptr);
+	}
 	pthread_join(thread_id, NULL);
 	return 0;
 }

@@ -17,7 +17,7 @@
 #endif
 
 
-static size_t compute_page_size()
+inline static size_t compute_page_size()
 {
 	static size_t m_page_size = 0; 
 	if (!m_page_size)
@@ -259,29 +259,35 @@ static void DeallocateDescriptor(Descriptor* c_descriptor)
 			}
 		}
 		qsort(c_liniar_list, it, sizeof(Descriptor*), pointer_compare);
+		os_dealloc(c_liniar_list, it * sizeof(Descriptor*));
 	}
 }
 
 
-static void* AllocateFromActiveSuperblock(ProcessorHeap* heap)
+static void UpdateActive(ProcessorHeap* c_heap, Descriptor* c_descriptor, uint32_t more_credits)
 {
-	uintptr_t new_active, old_active;
+	uintptr_t new_active = (uintptr_t)c_descriptor;
+	set_active_credits(new_active, more_credits - 1);
+	if (__sync_bool_compare_and_swap((void** volatile)&c_heap->m_active, NULL, new_active)) return;
+}
+
+
+static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
+{
 	Anchor new_anchor, old_anchor;
+	uintptr_t new_active, old_active;
+	uint32_t more_credits;
 	void* address;
 	do
 	{
-		new_active = old_active = heap->m_active;
+		new_active = old_active = c_heap->m_active;
 		if (!old_active)
 			return NULL;
 		if (get_active_credtis(old_active) == 0)
 			new_active = 0;
 		else
-		{
-			fprintf(stderr, "%u\n", get_active_credtis(new_active));
-			set_active_credits(new_active, (get_active_credtis(old_active) - 1));
-			fprintf(stderr, "%u\n", get_active_credtis(new_active));
-		}
-	}while(!__sync_bool_compare_and_swap((void** volatile)&heap->m_active, old_active, new_active));
+			--new_active;
+	}while(!__sync_bool_compare_and_swap((void** volatile)&c_heap->m_active, old_active, new_active));
 	Descriptor* c_descriptor = (Descriptor*)get_active_pointer(old_active);
 	do
 	{
@@ -293,10 +299,12 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* heap)
 		if (get_active_credtis(old_active) == 0)
 		{
 			if (old_anchor.m_count == 0)
+			{
 				new_anchor.m_state = FULL;
+			}
 			else
 			{
-				uint32_t more_credits = min(old_anchor.m_count, MAXCREDITS);
+				more_credits = min(old_anchor.m_count, MAXCREDITS);
 				new_anchor.m_count -= more_credits;
 			}
 		}
@@ -304,31 +312,32 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* heap)
 	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
 					    *(uint64_t* volatile)&old_anchor, 
 					    *(uint64_t* volatile)&new_anchor));
+	if (get_active_credtis(old_active) == 0 && old_anchor.m_count > 0)
+		UpdateActive(c_heap, c_descriptor, more_credits);
 	*((Descriptor**)address) = c_descriptor;
 	return (uintptr_t*)(address + sizeof(Descriptor*));
 
 }
 
 
-static void* AllocateFromNewSuperblock(ProcessorHeap* heap)
+static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 {
 	Descriptor* c_descriptor = AllocateDescriptor();	
-	c_descriptor->m_super_block = os_alloc(heap->m_size_class->m_super_block_size);
-	c_descriptor->m_heap = heap;
-	c_descriptor->m_block_size = heap->m_size_class->m_block_size;
-	c_descriptor->m_number_of_blocks = heap->m_size_class->m_super_block_size / c_descriptor->m_block_size;
+	c_descriptor->m_super_block = os_alloc(c_heap->m_size_class->m_super_block_size);
+	c_descriptor->m_heap = c_heap;
+	c_descriptor->m_block_size = c_heap->m_size_class->m_block_size;
+	c_descriptor->m_number_of_blocks = c_heap->m_size_class->m_super_block_size / c_descriptor->m_block_size;
 
-	uintptr_t new_active;
+
 	organize_list(c_descriptor->m_super_block, c_descriptor->m_number_of_blocks, c_descriptor->m_block_size);
-	*((void**)&new_active) = (void*)c_descriptor;
+	uintptr_t new_active = (uintptr_t)c_descriptor;
 	set_active_credits(new_active, (min(c_descriptor->m_number_of_blocks - 1, MAXCREDITS) - 1)); /** n credits means n+1 available blocks **/
-
 	c_descriptor->m_anchor.m_available = 1;
 	c_descriptor->m_anchor.m_count = c_descriptor->m_number_of_blocks - get_active_credtis(new_active) - 2;
 	c_descriptor->m_anchor.m_state = ACTIVE; /** install it as the active superblock **/
 
 	__asm__ __volatile__ ("sfence" : : : "memory");
-	if (__sync_bool_compare_and_swap((void** volatile)&heap->m_active, NULL, new_active))
+	if (__sync_bool_compare_and_swap((void** volatile)&c_heap->m_active, NULL, new_active))
 	{
 		*((Descriptor**)c_descriptor->m_super_block) = c_descriptor;
 		return (uintptr_t*)(c_descriptor->m_super_block + sizeof(Descriptor*));
@@ -401,5 +410,4 @@ void aae_free(void* start)
 	void* c_super_block = c_descriptor->m_super_block;
 	Anchor new_anchor, old_anchor;
 	new_anchor = old_anchor = c_descriptor->m_anchor;
-	DeallocateDescriptor(c_descriptor);
 }
