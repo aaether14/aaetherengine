@@ -8,21 +8,32 @@
 #endif
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #define max(a,b) ((a) > (b) ? (a) : (b))
-#ifdef AAE_LINUX_PLATFORM
+#if defined(AAE_LINUX_PLATFORM)
 #include <sys/types.h> /** size_t **/
 #include <sys/mman.h> /** mmap, munmap **/
 #include <unistd.h> /** sysconf **/
 #define os_alloc(size) mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)
 #define os_dealloc(start, size) munmap(start, size)
+#elif defined(AAE_WINDOWS_PLATFORM)
+#endif
+#ifndef AAE_MAX_SMALL_BLOCK_SIZE
+#define AAE_MAX_SMALL_BLOCK_SIZE 0x800
+#endif
+#ifndef AAE_GRANULARITY
+#define AAE_GRANULARITY 0x8
+#endif
+#ifndef AAE_SUPERBLOCK_SIZE
+#define AAE_SUPERBLOCK_SIZE 0x2000
 #endif
 
 
-inline static size_t compute_page_size()
+inline static size_t get_page_size()
 {
 	static size_t m_page_size = 0; 
 	if (!m_page_size)
-		#ifdef AAE_LINUX_PLATFORM
+		#if defined(AAE_LINUX_PLATFORM)
 		m_page_size = sysconf(_SC_PAGESIZE);
+		#elif defined(AAE_WINDOWS_PLATFORM)
 		#endif
 	return m_page_size;
 }
@@ -31,6 +42,22 @@ inline static size_t compute_page_size()
 static int32_t pointer_compare(const void* a, const void* b)
 {
 	return *(uintptr_t*)a - *(uintptr_t*)b;
+}
+
+
+#define MAXCREDITS (0x1<<0x6)
+inline static uintptr_t get_active_pointer(uintptr_t active)
+{
+	return active & (~(MAXCREDITS-0x1));
+}
+inline static void set_active_credits(uintptr_t* active, uint32_t credits) 
+{
+	*active = get_active_pointer(*active);
+	*active |= credits;
+}
+inline static uint32_t get_active_credits(uintptr_t active)
+{
+	return active & (MAXCREDITS-0x1);
 }
 
 
@@ -74,13 +101,13 @@ static HPRecord* allocate_hp()
 		}
 		else
 		{
-			c_hp = os_alloc(compute_page_size());
+			c_hp = os_alloc(get_page_size());
 			/** oragnize hazard pointer superblock in a linked list **/
-			organize_linked_list(c_hp, compute_page_size(), HPRecord)
+			organize_linked_list(c_hp, get_page_size(), HPRecord)
 
 			__asm__ __volatile__ ("sfence" : : : "memory");
 			if (__sync_bool_compare_and_swap((void** volatile)&m_freelist_hp_head, NULL, c_hp->m_next)) break;
-			os_dealloc(c_hp, compute_page_size());
+			os_dealloc(c_hp, get_page_size());
 		}
 	}
 	return c_hp;
@@ -125,11 +152,6 @@ static void release_hp(HPRecord* hp)
 }
 
 
-#define SUPERBLOCKSIZE 0x2000
-#define MAXCREDITS 0x40
-#define set_active_credits(active, credits) (active |= (credits))
-#define get_active_credtis(active) (active & ((0x1<<0x6)-0x1))
-#define get_active_pointer(active) (active & (~((0x1<<0x6)-0x1)))
 #define large_block(descriptor) (uintptr_t)descriptor & 0x1
 typedef enum
 {
@@ -181,8 +203,8 @@ struct __processor_heap
 };
 
 
-static SizeClass m_size_classes[] = {{8, SUPERBLOCKSIZE}, {32, SUPERBLOCKSIZE}, {256, SUPERBLOCKSIZE}, {1024, SUPERBLOCKSIZE}};
-__thread ProcessorHeap* m_heaps[sizeof(m_size_classes) / sizeof(SizeClass)] = {};
+static SizeClass m_size_classes[AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY] = {};
+__thread ProcessorHeap* m_heaps[AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY] = {};
 __thread HPRecord* volatile m_private_descriptor_rlist = NULL;	
 __thread size_t m_private_descriptor_rcount = 0;
 
@@ -209,14 +231,14 @@ static Descriptor* AllocateDescriptor()
 		}
 		else
 		{
-			c_descriptor = os_alloc(compute_page_size());
-			organize_linked_list(c_descriptor, compute_page_size(), Descriptor)
+			c_descriptor = os_alloc(get_page_size());
+			organize_linked_list(c_descriptor, get_page_size(), Descriptor)
 			/** organize descriptor super block in a linked list **/
 
 			__asm__ __volatile__ ("sfence" : : : "memory");
 			success = __sync_bool_compare_and_swap((void** volatile)&m_freelist_descriptor_head, NULL, c_descriptor->m_next);
 			if (!success) /** some other thread got ahead of us and allocated a descriptor block - abort mission **/
-				os_dealloc(c_descriptor, compute_page_size());
+				os_dealloc(c_descriptor, get_page_size());
 		}
 		release_hp(c_hp);
 		if (success)
@@ -267,8 +289,18 @@ static void DeallocateDescriptor(Descriptor* c_descriptor)
 static void UpdateActive(ProcessorHeap* c_heap, Descriptor* c_descriptor, uint32_t more_credits)
 {
 	uintptr_t new_active = (uintptr_t)c_descriptor;
-	set_active_credits(new_active, more_credits - 1);
+	set_active_credits(&new_active, more_credits - 1);
 	if (__sync_bool_compare_and_swap((void** volatile)&c_heap->m_active, NULL, new_active)) return;
+
+	Anchor new_anchor, old_anchor;
+	do
+	{
+		new_anchor = old_anchor = c_descriptor->m_anchor;
+		new_anchor.m_count += more_credits;
+		new_anchor.m_state = PARTIAL;
+	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
+					    *(uint64_t* volatile)&old_anchor, 
+					    *(uint64_t* volatile)&new_anchor));
 }
 
 
@@ -283,7 +315,7 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 		new_active = old_active = c_heap->m_active;
 		if (!old_active)
 			return NULL;
-		if (get_active_credtis(old_active) == 0)
+		if (get_active_credits(old_active) == 0)
 			new_active = 0;
 		else
 			--new_active;
@@ -296,7 +328,7 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 		uint32_t next = *((uintptr_t*)address);
 		new_anchor.m_available = next;
 		++new_anchor.m_tag;
-		if (get_active_credtis(old_active) == 0)
+		if (get_active_credits(old_active) == 0)
 		{
 			if (old_anchor.m_count == 0)
 			{
@@ -312,7 +344,7 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
 					    *(uint64_t* volatile)&old_anchor, 
 					    *(uint64_t* volatile)&new_anchor));
-	if (get_active_credtis(old_active) == 0 && old_anchor.m_count > 0)
+	if (get_active_credits(old_active) == 0 && old_anchor.m_count > 0)
 		UpdateActive(c_heap, c_descriptor, more_credits);
 	*((Descriptor**)address) = c_descriptor;
 	return (uintptr_t*)(address + sizeof(Descriptor*));
@@ -331,9 +363,9 @@ static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 
 	organize_list(c_descriptor->m_super_block, c_descriptor->m_number_of_blocks, c_descriptor->m_block_size);
 	uintptr_t new_active = (uintptr_t)c_descriptor;
-	set_active_credits(new_active, (min(c_descriptor->m_number_of_blocks - 1, MAXCREDITS) - 1)); /** n credits means n+1 available blocks **/
+	set_active_credits(&new_active, (min(c_descriptor->m_number_of_blocks - 1, MAXCREDITS) - 1)); /** n credits means n+1 available blocks **/
 	c_descriptor->m_anchor.m_available = 1;
-	c_descriptor->m_anchor.m_count = c_descriptor->m_number_of_blocks - get_active_credtis(new_active) - 2;
+	c_descriptor->m_anchor.m_count = c_descriptor->m_number_of_blocks - get_active_credits(new_active) - 2;
 	c_descriptor->m_anchor.m_state = ACTIVE; /** install it as the active superblock **/
 
 	__asm__ __volatile__ ("sfence" : : : "memory");
@@ -354,20 +386,29 @@ static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 
 static ProcessorHeap* FindHeap(size_t size)
 {
-
-	ProcessorHeap* c_heap; 
+	if (size == 0) return NULL;
 	/** We need to fit both the object and the descriptor in a single block **/
 	size += sizeof(Descriptor*);
-	if (size > 0x400) /** large block **/
-		return NULL;
-  
-	c_heap = m_heaps[1];
+	if (size >= AAE_MAX_SMALL_BLOCK_SIZE) return NULL; /** large block **/
+
+	static uint32_t c_has_initialized_size_classes = 0;
+	if (!c_has_initialized_size_classes)
+	{
+		for (uint32_t it = 0; it < AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY; ++it)
+		{
+			m_size_classes[it].m_block_size = (it + 1) * AAE_GRANULARITY;
+			m_size_classes[it].m_super_block_size = AAE_SUPERBLOCK_SIZE;
+		}
+		c_has_initialized_size_classes = 1;
+	}
+	--size; /** an allocationof n * AAE_GRANULARITY should fit in the (n - 1)th size class **/
+	ProcessorHeap* c_heap = m_heaps[size / AAE_GRANULARITY];
 	if (c_heap == NULL) 
 	{
-		c_heap = os_alloc(sizeof(ProcessorHeap));
-		*((void**)&(c_heap->m_active)) = NULL;
-		c_heap->m_size_class = &m_size_classes[1];
-		m_heaps[1] = c_heap;
+		c_heap = (ProcessorHeap*)allocate_hp(); /** we used hp allocator because sizeof(HPRecord) = sizeof(ProcessorHeap) **/
+		c_heap->m_active = 0;
+		c_heap->m_size_class = &m_size_classes[size / AAE_GRANULARITY];
+		m_heaps[size / AAE_GRANULARITY] = c_heap;
 	}
 	return c_heap;
 }
@@ -380,11 +421,11 @@ void* aae_malloc(size_t size)
 	void* address;
 	if (!c_heap) 
 	{
-		size_t header_size = 2 * sizeof(Descriptor*);
+		size_t header_size = (sizeof(Descriptor*)) << 1;
 		address = os_alloc(size + header_size);
-		*((uintptr_t*)address) = header_size; /** encode the size of the large block **/
-		*((uintptr_t*)(address + header_size / 2)) |= 0x1;
-		return (uintptr_t*)(address + 2 * header_size);
+		*((uintptr_t*)address) = size; /** encode the size of the large block **/
+		*((uintptr_t*)(address + (header_size >> 1))) |= 0x1;
+		return (uintptr_t*)(address + header_size);
 	}
 	while (1)
 	{
@@ -399,15 +440,37 @@ void* aae_malloc(size_t size)
 void aae_free(void* start)
 {
 	if (!start) return;
-	Descriptor* c_descriptor = *((Descriptor**)(uintptr_t*)(start - sizeof(Descriptor*)));
+	start = (uintptr_t*)(start - sizeof(Descriptor*));
+	Descriptor* c_descriptor = *((Descriptor**)start);
 	if (large_block(c_descriptor))
 	{
-		void* header_start = ((uintptr_t*)(start - 2 * sizeof(Descriptor*)));
+		void* header_start = ((uintptr_t*)(start - sizeof(Descriptor*)));
 		size_t size = *((uintptr_t*)header_start);
 		os_dealloc(header_start, size);
 		return;
 	}
 	void* c_super_block = c_descriptor->m_super_block;
 	Anchor new_anchor, old_anchor;
-	new_anchor = old_anchor = c_descriptor->m_anchor;
+	ProcessorHeap* c_heap;
+	do
+	{
+		new_anchor = old_anchor = c_descriptor->m_anchor;
+		*((uintptr_t*)start) = old_anchor.m_available;
+		new_anchor.m_available = (uintptr_t)(start - c_super_block) / c_descriptor->m_block_size;
+		if (old_anchor.m_state == FULL)
+			new_anchor.m_state = PARTIAL;
+		if (old_anchor.m_count == c_descriptor->m_number_of_blocks - 1)
+		{
+			c_heap = c_descriptor->m_heap;
+			new_anchor.m_state = EMPTY;	
+		}
+		else
+		{
+			new_anchor.m_count++;
+		}
+		__asm__ __volatile__ ("sfence" : : : "memory");
+	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
+					    *(uint64_t* volatile)&old_anchor, 
+					    *(uint64_t* volatile)&new_anchor));
+
 }

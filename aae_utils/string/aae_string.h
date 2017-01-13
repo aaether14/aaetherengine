@@ -12,4 +12,6 @@ aae_size_t aae_strlen(const_byte_ptr s);
 *will return < 0 if the strings are equal, < 0 if a is "smaller" than b and > 0 otherwise
 **/
 i32 aae_strcmp(const_byte_ptr a, const_byte_ptr b);
+/** atoi implementation **/
+i32 aae_atoi(const_byte_ptr s);
 #endif

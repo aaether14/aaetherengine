@@ -36,11 +36,11 @@ AAE_EXTERN_TOOL i32 aae_main()
 {
 	pthread_t thread_id;
 	pthread_create(&thread_id, AAE_NULL, &function, NULL);
+	void* ptr_arr[70];
 	for (int i = 0; i < 70; ++i)
-	{
-		void* ptr = aae_malloc(10);
-		aae_free(ptr);
-	}
+		ptr_arr[i] = aae_malloc(10);
+	for (int i = 69; i >= 0; --i)
+		aae_free(ptr_arr[i]);
 	pthread_join(thread_id, NULL);
 	return 0;
 }

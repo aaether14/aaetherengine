@@ -6,16 +6,8 @@
 #include "aae_defines.h"
 
 
-#define aae_malloc aae_malloc
-#define aae_free aae_free
-
-
-/**
-*allocate numbytes on the heap
-*/
+/** allocate numbytes on the heap **/
 AAE_EXTERN_TOOL void* aae_malloc(aae_size_t numbytes);
-/**
-*free memory segment on the heap starting at firstbyte
-*/
+/** free memory segment on the heap starting at firstbyte **/
 AAE_EXTERN_TOOL void aae_free(void * firstbyte);
 #endif
