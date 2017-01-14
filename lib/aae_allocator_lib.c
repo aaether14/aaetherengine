@@ -401,7 +401,7 @@ static ProcessorHeap* FindHeap(size_t size)
 		}
 		c_has_initialized_size_classes = 1;
 	}
-	--size; /** an allocationof n * AAE_GRANULARITY should fit in the (n - 1)th size class **/
+	--size; /** an allocation of n * AAE_GRANULARITY should fit in the (n - 1)th size class **/
 	ProcessorHeap* c_heap = m_heaps[size / AAE_GRANULARITY];
 	if (c_heap == NULL) 
 	{
