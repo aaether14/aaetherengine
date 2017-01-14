@@ -1,7 +1,7 @@
 /** this allocator was designed for x86/_64 architecture **/
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
+
 
 #ifndef NULL
 #define NULL ((void*)0)
@@ -42,6 +42,20 @@ inline static size_t get_page_size()
 static int32_t pointer_compare(const void* a, const void* b)
 {
 	return *(uintptr_t*)a - *(uintptr_t*)b;
+}
+static uint32_t pointer_binary_search(uintptr_t* array, uint32_t left, uint32_t right, uintptr_t value)
+{
+	while (left <= right)
+	{
+		uint32_t middle = (uint32_t)((uint64_t)(left + right) >> 1);
+		if (array[middle] == value)
+			return 1;
+		if (array[middle] < value)
+			left = middle + 1;
+		else
+			right = middle - 1;
+	}
+	return 0;
 }
 
 
@@ -97,6 +111,7 @@ static HPRecord* allocate_hp()
 		if (c_hp)
 		{
 			HPRecord* c_next = c_hp->m_next;
+			__asm__ __volatile__ ("sfence" : : : "memory");
 			if (__sync_bool_compare_and_swap((void** volatile)&m_freelist_hp_head, c_hp, c_next)) break;
 		}
 		else
@@ -129,6 +144,7 @@ static HPRecord* acquire_hp(HPRecord** volatile m_shared_list_head, size_t* vola
 		do 
 		{
 			old_length = *m_shared_list_count;
+			__asm__ __volatile__ ("sfence" : : : "memory");
       		} while (!__sync_bool_compare_and_swap((size_t* volatile)m_shared_list_count, old_length, old_length + 1));
       	}
       	c_hp = allocate_hp();
@@ -221,12 +237,14 @@ static Descriptor* AllocateDescriptor()
 		HPRecord* c_hp = acquire_hp((HPRecord** volatile)&m_shared_hp_list_head, (size_t* volatile)&m_shared_hp_list_count);
 		do /** set hazard pointer **/
 		{
-			c_descriptor = m_freelist_descriptor_head;
-			c_hp->m_hazard_ptr = c_descriptor;
-		}while(c_descriptor != m_freelist_descriptor_head);
+			c_hp->m_hazard_ptr = m_freelist_descriptor_head;
+			__asm__ __volatile__ ("sfence" : : : "memory");
+			c_descriptor = c_hp->m_hazard_ptr;
+		}while(c_hp->m_hazard_ptr != m_freelist_descriptor_head);
 		if (c_descriptor)
 		{
 			Descriptor* c_next = c_descriptor->m_next;
+			__asm__ __volatile__ ("sfence" : : : "memory");
 			success = __sync_bool_compare_and_swap((void** volatile)&m_freelist_descriptor_head, c_descriptor, c_next);
 		}
 		else
@@ -267,21 +285,30 @@ static void DeallocateDescriptor(Descriptor* c_descriptor)
 	++m_private_descriptor_rcount;
 	if (m_private_descriptor_rcount > 2 * m_shared_hp_list_count)
 	{
-		Descriptor** c_liniar_list = (Descriptor**)os_alloc(m_private_descriptor_rcount * sizeof(Descriptor*));
 		uint32_t it = 0;
-		c_hp = m_private_descriptor_rlist;
-		for (; c_hp; c_hp = c_hp->m_next)
+		HPRecord* c_shared_hp_list_head = m_shared_hp_list_head;
+		size_t c_shared_hp_list_count = m_shared_hp_list_count;	
+		Descriptor** c_liniar_list = (Descriptor**)os_alloc(c_shared_hp_list_count * sizeof(Descriptor*));
+		while (c_shared_hp_list_head)
 		{
-			if (c_hp->m_is_active)
-			{
-				*(c_liniar_list + it) = c_hp->m_hazard_ptr;
-				++it;
-				release_hp(c_hp);
-				--m_private_descriptor_rcount;
-			}
+			if (c_shared_hp_list_head->m_is_active)
+				c_liniar_list[it++] = c_shared_hp_list_head->m_hazard_ptr;
+			c_shared_hp_list_head = c_shared_hp_list_head->m_next;
 		}
 		qsort(c_liniar_list, it, sizeof(Descriptor*), pointer_compare);
-		os_dealloc(c_liniar_list, it * sizeof(Descriptor*));
+		HPRecord* c_private_hp_list_head = m_private_descriptor_rlist;
+		while (c_private_hp_list_head)
+		{
+			if (c_private_hp_list_head->m_hazard_ptr)
+				if (!pointer_binary_search((uintptr_t*)c_liniar_list, 0, it - 1, (uintptr_t)c_private_hp_list_head->m_hazard_ptr))
+				{
+					descriptor_free_function(((Descriptor*)c_private_hp_list_head->m_hazard_ptr));
+					release_hp(c_private_hp_list_head);
+					--m_private_descriptor_rlist;
+				}
+			c_private_hp_list_head = c_private_hp_list_head->m_next;
+		}
+		os_dealloc(c_liniar_list, c_shared_hp_list_count * sizeof(Descriptor*));
 	}
 }
 
@@ -298,6 +325,7 @@ static void UpdateActive(ProcessorHeap* c_heap, Descriptor* c_descriptor, uint32
 		new_anchor = old_anchor = c_descriptor->m_anchor;
 		new_anchor.m_count += more_credits;
 		new_anchor.m_state = PARTIAL;
+		__asm__ __volatile__ ("sfence" : : : "memory");
 	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
 					    *(uint64_t* volatile)&old_anchor, 
 					    *(uint64_t* volatile)&new_anchor));
@@ -340,7 +368,7 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 				new_anchor.m_count -= more_credits;
 			}
 		}
-
+		__asm__ __volatile__ ("sfence" : : : "memory");
 	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
 					    *(uint64_t* volatile)&old_anchor, 
 					    *(uint64_t* volatile)&new_anchor));
@@ -462,6 +490,7 @@ void aae_free(void* start)
 		if (old_anchor.m_count == c_descriptor->m_number_of_blocks - 1)
 		{
 			c_heap = c_descriptor->m_heap;
+			__asm__ __volatile__ ("lfence" : : : "memory");
 			new_anchor.m_state = EMPTY;	
 		}
 		else
