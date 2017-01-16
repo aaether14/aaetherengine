@@ -2,21 +2,16 @@
 #define AAE_MEMORY_ALLOCATOR_H
 
 
-
 #include "aae_types.h"
 
 
-
-/** the aaether system is intended to be compiled with gcc **/
-#ifdef __GNUC__
+#ifdef AAE_LINUX_PLATFORM
 extern "C++"
 {
 	inline void* operator new(aae_size_t, void* __p) { return __p; }
 	inline void* operator new[](aae_size_t, void* __p) { return __p; }
 }
 #endif
-
-
 
 
 template <typename T, class Arena>
@@ -27,12 +22,9 @@ static inline void aae_delete(T * object, Arena & arena)
 }
 
 
-
-//allocate and deallocate using provided memory arena
+/** allocate and deallocate using provided memory arena **/
 #define AAE_NEW(type, arena)  new (arena.Allocate(sizeof(type)))type
 #define AAE_DELETE(object, arena) aae_delete(object, arena)
-
-
 
 
 #endif

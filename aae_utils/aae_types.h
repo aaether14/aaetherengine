@@ -3,6 +3,9 @@
 
 
 #include <stdint.h>
+#ifdef AAE_LINUX_PLATFORM
+#include <sys/types.h>
+#endif
 
 
 typedef int64_t i64;
@@ -11,6 +14,7 @@ typedef int16_t i16;
 typedef int8_t i8;
 
 
+typedef size_t aae_size_t;
 typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
@@ -27,14 +31,6 @@ typedef double r64;
 typedef char byte;
 typedef char* byte_ptr;
 typedef const char* const_byte_ptr;
-
-
-/** the aaether system is intended to be compiled with gcc **/
-#ifdef __GNUC__ 
-typedef __SIZE_TYPE__ aae_size_t;
-#endif
-
-
 
 
 #endif

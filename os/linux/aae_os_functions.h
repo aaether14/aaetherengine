@@ -6,7 +6,7 @@
 *Wrapper for linux's sys_write
 */
 #ifndef AAE_WRITE_FUNC
-#define AAE_wRITE_FUNC
+#define AAE_WRITE_FUNC
 AAE_EXTERN_TOOL void aae_write(i32 fd, const char * buffer, aae_size_t length);
 #endif
 /**

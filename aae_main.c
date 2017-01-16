@@ -105,7 +105,7 @@ AAE_EXTERN_TOOL i32 aae_main()
 {
 	pthread_t thread_id;
 	pthread_create(&thread_id, AAE_NULL, &function, NULL);
-		test_tree *test = AAE_NEW(test_tree, aae_mallocator);
+	test_tree *test = AAE_NEW(test_tree, aae_mallocator);
 	test->insert(52, "52 - ");
 	test->insert(745, "745 - ");
 	test->insert(913, "913 - ");
