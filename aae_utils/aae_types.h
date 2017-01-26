@@ -5,6 +5,7 @@
 #include <stdint.h>
 #ifdef AAE_LINUX_PLATFORM
 #include <sys/types.h>
+#define aae_thread_local __thread
 #endif
 
 
@@ -21,9 +22,6 @@ typedef uint16_t u16;
 typedef uint8_t u8;
 
 
-/**
-*Not really a guarantee
-*/
 typedef float r32;
 typedef double r64;
 

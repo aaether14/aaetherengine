@@ -39,6 +39,7 @@ endif()
 
 #add all source files here
 aae_add_source(aae_utils/assert/aae_assert.c)
+aae_add_source(aae_utils/math/aae_math.c)
 aae_add_source(aae_utils/string/aae_string.c)
 aae_add_source(aae_utils/error/aae_error.c)
 aae_add_source(aae_utils/aae_allocators.c)
@@ -61,7 +62,7 @@ find_package(Threads)
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 add_definitions(-DAAE_MULTITHREADED)
 endif()
-target_link_libraries (${PROJECT_NAME} ${AAE_ALLOCATOR_LIB})
+target_link_libraries (${PROJECT_NAME} ${AAE_ALLOCATOR_LIB} -lX11 -lGL)
 add_definitions(-DAAE_LINUX_PLATFORM)
 endif()
 

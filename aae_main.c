@@ -1,207 +1,60 @@
 #include "aae_memory_allocator.h"
 #include "aae_allocators.h"
 #include "string/aae_string.h"
-#include "assert/aae_assert.h"
-#include "error/aae_error.h"
 #include "os/linux/aae_os_functions.h" 
 #include <pthread.h>
 
 
-extern aae_allocator aae_mallocator;
-
-
-#define AAE_LINKED_LIST_NAME test_list
-#define AAE_LINKED_LIST_DATA_TYPE const_byte_ptr
-#define AAE_LINKED_LIST_MEMORY_ARENA aae_mallocator
-#include "aae_utils/defs/aae_linked_list.def"
+#include <X11/Xlib.h>
+#include <GL/glx.h>
 
 
 
-#define AAE_RB_TREE_NAME test_tree
-#define AAE_RB_TREE_KEY_TYPE i32
-#define AAE_RB_TREE_VALUE_TYPE const_byte_ptr
-#define AAE_RB_TREE_MEMORY_ARENA aae_mallocator
-#include "aae_utils/defs/aae_rb_tree.def"
-
-
-
-void* function(void* key)
-{
-	test_tree *test = AAE_NEW(test_tree, aae_mallocator);
-	test->insert(52, "52 - ");
-	test->insert(745, "745 - ");
-	test->insert(913, "913 - ");
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
-	test->insert(913, "913 - ");
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
-	test->insert(913, "913 - ");
-	test->remove(913);
-	test->remove(55);
-	test->remove(1000);
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
-	test->insert(913, "913 - ");
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
-
-	test_tree::__node* n = test->__internal_search(test->m_root, 52);
-	for (;n!=test->m_nil;n=__rb_tree_next(test, n))
-	{
-		aae_write(stderr, n->value, aae_strlen(n->value));
-		aae_write(stderr, ((n->color == 0) ? "Black " : "Red "), ((n->color == 0) ? 6 : 4));
-		if (n->left != test->m_nil)
-			aae_write(stderr, n->left->value, aae_strlen(n->left->value));
-		if (n->right != test->m_nil)
-			aae_write(stderr, n->right->value, aae_strlen(n->right->value));
-		aae_write(stderr, "\n", 1);
-	}
-
-
-	AAE_DELETE(test, aae_mallocator);
-	return AAE_NULL;
-}
+extern aae_allocator 		aae_mallocator;
+static Display			*m_display;
+static GLint			m_visual_attributes[] = {
+	GLX_X_RENDERABLE,	True, 
+	GLX_DRAWABLE_TYPE,	GLX_WINDOW_BIT,
+	GLX_RENDER_TYPE,	GLX_RGBA_BIT,
+	GLX_X_VISUAL_TYPE,	GLX_TRUE_COLOR,
+	GLX_RED_SIZE,		8,
+	GLX_GREEN_SIZE,		8,
+	GLX_BLUE_SIZE,		8,
+	GLX_ALPHA_SIZE,		8,
+	GLX_DEPTH_SIZE,		24,
+	GLX_STENCIL_SIZE,	8,
+	GLX_DOUBLEBUFFER,	True,
+	None
+};
+static i32			glx_major, glx_minor;
 
 
 
 AAE_EXTERN_TOOL i32 aae_main()
 {
-	pthread_t thread_id;
-	pthread_create(&thread_id, AAE_NULL, &function, NULL);
-	test_tree *test = AAE_NEW(test_tree, aae_mallocator);
-	test->insert(52, "52 - ");
-	test->insert(745, "745 - ");
-	test->insert(913, "913 - ");
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
-	test->insert(913, "913 - ");
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
-	test->insert(913, "913 - ");
-	test->remove(913);
-	test->remove(55);
-	test->remove(1000);
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
-	test->insert(913, "913 - ");
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(2342, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(82241);
-	test->insert(915, "913 - ");
-	test->remove(914);
-	test->remove(55);
-	test->remove(1000);
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823012, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "10lol00 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
-	test->insert(913, "913 - ");
-	test->insert(314, "314 - ");
-	test->insert(2113, "2113 - ");
-	test->insert(171, "171 - ");
-	test->insert(171, "171 - ");
-	test->insert(823, "823 - ");
-	test->insert(2341, "2341 - ");
-	test->insert(55, "55 - ");
-	test->remove(314);
-	test->insert(1000, "1000 - ");
-	test->insert(172, "172 - ");
-	test->remove(823);
 
-	test_tree::__node* n = test->__internal_search(test->m_root, 52);
-	for (;n!=test->m_nil;n=__rb_tree_next(test, n))
+	m_display = XOpenDisplay(NULL);
+	if (!m_display)
 	{
-		aae_write(stderr, n->value, aae_strlen(n->value));
-		aae_write(stderr, ((n->color == 0) ? "Black " : "Red "), ((n->color == 0) ? 6 : 4));
-		if (n->left != test->m_nil)
-			aae_write(stderr, n->left->value, aae_strlen(n->left->value));
-		if (n->right != test->m_nil)
-			aae_write(stderr, n->right->value, aae_strlen(n->right->value));
-		aae_write(stderr, "\n", 1);
+		aae_write(stderr, "Could not connect to X server!\n", 31);
+		aae_exit(0);
 	}
+	if (!glXQueryVersion(m_display, &glx_major, &glx_minor) || glx_major < 1 || glx_minor < 3)
+	{
+		aae_write(stderr, "Invalid GLX version!\n", 21);
+		aae_exit(0);
+	}
+	i32 m_framebuffer_count;
+	GLXFBConfig* m_framebuffer_config = glXChooseFBConfig(m_display, XDefaultScreen(m_display), m_visual_attributes, &m_framebuffer_count);
+	if (!m_framebuffer_config)
+	{
+		aae_write(stderr, "Failed to retrieve a framebuffer configuarion!\n", 47);
+		aae_exit(0);
+	}
+	for (i32 it = 0; it < m_framebuffer_count; ++it)
+	{
 
-
-	AAE_DELETE(test, aae_mallocator);
-	pthread_join(thread_id, NULL);
+	}
+	XFree(m_framebuffer_config);
 	return 0;
 }

@@ -329,7 +329,7 @@ enum AAE_RB_TREE_ERROR_CODES
 
 
 #ifndef AAE_RB_TREE_KEY_COMPARE_FUNCTION
-#define AAE_RB_TREE_KEY_COMPARE_FUNCTION(a, b) ((a==b)?0:((a<b)?-1:1))
+#define AAE_RB_TREE_KEY_COMPARE_FUNCTION(a, b) (((a-b) > 0) - ((a-b) < 0)) /** default key compare function is signum **/
 #endif
 
 

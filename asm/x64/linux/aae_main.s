@@ -6,7 +6,6 @@
 
 
 
-
 aae_exit:
 	pushq %rax
 	pushq %rbx
@@ -18,19 +17,6 @@ aae_exit:
 	retq
 
 
-
-aae_write:
-	pushq %rax
-	pushq %rbx
-	pushq %rcx
-	movq $4, %rax
-	movq %rdi, %rbx
-	movq %rsi, %rcx
-	int $0x80
-	popq %rcx
-	popq %rbx
-	popq %rax
-	retq
 
 
 _start:

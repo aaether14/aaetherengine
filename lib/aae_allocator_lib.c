@@ -503,3 +503,9 @@ void aae_free(void* start)
 					    *(uint64_t* volatile)&new_anchor));
 
 }
+
+
+ssize_t aae_write(int32_t file_descriptor, const char* buffer, size_t no_bytes)
+{
+	return write(file_descriptor, buffer, no_bytes);
+}
