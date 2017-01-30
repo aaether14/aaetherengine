@@ -33,6 +33,10 @@ static i32			glx_major, glx_minor;
 AAE_EXTERN_TOOL i32 aae_main()
 {
 
+	byte buffer[1000];
+	aae_sprintf(buffer, "%i", 5);
+	aae_write(stderr, buffer, aae_strlen(buffer));
+
 	m_display = XOpenDisplay(NULL);
 	if (!m_display)
 	{
