@@ -12,8 +12,8 @@ enum __aae__std__files
 #endif
 
 
-AAE_EXTERN_TOOL void aae_exit(i32 exit_code);
-AAE_EXTERN_TOOL void aae_write(i32 fd, const char * buffer, aae_size_t length);
+AAE_EXTERN_TOOL void exit(i32 exit_code);
+AAE_EXTERN_TOOL void write(i32 fd, const_byte_ptr buffer, aae_size_t length);
 aae_size_t aae_strlen(const char * s);
 
 
@@ -21,8 +21,8 @@ void __aae_assert(const char * msg)
 {
 	
 
-	aae_write(stderr, "\nAssertion failed! - ", 20);
-	aae_write(stderr, msg, aae_strlen(msg));
-	aae_exit(1);
+	write(stderr, "\nAssertion failed! - ", 20);
+	write(stderr, msg, aae_strlen(msg));
+	exit(1);
 
 }

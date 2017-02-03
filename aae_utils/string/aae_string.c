@@ -1,5 +1,6 @@
 #include "aae_string.h"
 #include "math/aae_math.h"
+#include "ctype/aae_ctype.h"
 #include "aae_defines.h"
 
 
@@ -77,6 +78,7 @@ i64 aae_atol(const_byte_ptr s)
 
 
 static aae_thread_local byte m_ultoa_buffer[313]; /** will hold the largest base 10 representation of a double **/
+static aae_thread_local const_byte_ptr m_digits = "0123456789abcdef";
 /** ultoa implementation **/
 byte_ptr aae_ultoa(u64 v, aae_size_t o)
 {
@@ -135,6 +137,7 @@ void aae_vsprintf(byte_ptr buf, const_byte_ptr fmt, va_list args)
 {
 
 	byte_ptr t_string;
+	i32 t_pr;
 	i64 t_i64;
 	u64 t_u64;
 	r64 t_r64;
@@ -145,7 +148,14 @@ void aae_vsprintf(byte_ptr buf, const_byte_ptr fmt, va_list args)
 	{
 		if (ch == '%')
 		{
+			t_pr = 0;
 			t_string = AAE_NULL;
+			while(*fmt && aae_isdigit(*fmt))
+			{
+				t_pr *= 10;
+				t_pr += ((i32)(*fmt - '0'));
+				++fmt;
+			}
 			switch(ch = *fmt++)
 			{
 				case 'i':
@@ -156,7 +166,7 @@ void aae_vsprintf(byte_ptr buf, const_byte_ptr fmt, va_list args)
 				}
 				case 'I':
 				{
-					t_i64 = (i32)va_arg(args, i64);
+					t_i64 = (i64)va_arg(args, i64);
 					t_string = aae_ltoa(t_i64);
 					break;
 				}
@@ -166,10 +176,35 @@ void aae_vsprintf(byte_ptr buf, const_byte_ptr fmt, va_list args)
 					t_string = aae_ultoa(t_u64);
 					break;
 				}
-				case 'f':
+				case 'U':
 				{
+					t_u64 = (u64)va_arg(args, u64);
+					t_string = aae_ultoa(t_u64);
+					break;
+				}
+				case 'x':
+				case 'X':
+				{
+					break;
+				}
+				case 'f':
+				case 'F':
+				{
+					t_pr = !t_pr ? 3 : t_pr;
 					t_r64 = (r64)va_arg(args, r64);
-					t_string = aae_dtoa(t_r64, 3);
+					t_string = aae_dtoa(t_r64, t_pr);
+					break;
+				}
+				case 'c':
+				{
+					m_ultoa_buffer[0] = (byte)va_arg(args, i32);
+					m_ultoa_buffer[1] = '\0';
+					t_string = m_ultoa_buffer;
+					break;
+				}
+				case 's':
+				{
+					t_string = (byte_ptr)va_arg(args, byte_ptr);
 					break;
 				}
 			}
@@ -184,6 +219,7 @@ void aae_vsprintf(byte_ptr buf, const_byte_ptr fmt, va_list args)
 			*buf++ = ch;
 		}
 	}
+	*buf = '\0';
 }
 
 

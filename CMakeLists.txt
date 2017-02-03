@@ -12,7 +12,7 @@ find_package(aae_utils REQUIRED)
 
 #include directories of the project
 include_directories(${CMAKE_SOURCE_DIR}/aae_utils)
-list(APPEND CMAKE_CXX_FLAGS "-std=c++11 -nostartfiles -nostdlib -fno-exceptions -fno-asynchronous-unwind-tables")
+list(APPEND CMAKE_CXX_FLAGS "-std=c++11 -nostartfiles -fno-exceptions -fno-asynchronous-unwind-tables")
 
 
 
@@ -40,6 +40,7 @@ endif()
 #add all source files here
 aae_add_source(aae_utils/assert/aae_assert.c)
 aae_add_source(aae_utils/math/aae_math.c)
+aae_add_source(aae_utils/ctype/aae_ctype.c)
 aae_add_source(aae_utils/string/aae_string.c)
 aae_add_source(aae_utils/error/aae_error.c)
 aae_add_source(aae_utils/aae_allocators.c)

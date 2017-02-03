@@ -1,6 +1,7 @@
 #include "aae_memory_allocator.h"
 #include "aae_allocators.h"
 #include "string/aae_string.h"
+#include "ctype/aae_ctype.h"
 #include "os/linux/aae_os_functions.h" 
 #include <pthread.h>
 
@@ -32,9 +33,9 @@ static i32			glx_major, glx_minor;
 
 AAE_EXTERN_TOOL i32 aae_main()
 {
-
+	
 	byte buffer[1000];
-	aae_sprintf(buffer, "%i", 5);
+	aae_sprintf(buffer, "%ilu - %c - should also work with %10F ,,,,flo%5fats :))) --- %U", 534, 'Z', 3.11423, 15.132, aae_isupper('f'));
 	aae_write(stderr, buffer, aae_strlen(buffer));
 
 	m_display = XOpenDisplay(NULL);
@@ -62,3 +63,6 @@ AAE_EXTERN_TOOL i32 aae_main()
 	XFree(m_framebuffer_config);
 	return 0;
 }
+
+
+

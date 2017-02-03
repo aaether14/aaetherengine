@@ -14,10 +14,11 @@ enum __aae__std__files
 /** *Wrapper for linux's sys_write **/
 #ifndef AAE_WRITE_FUNC
 #define AAE_WRITE_FUNC
-AAE_EXTERN_TOOL void aae_write(i32 fd, const char * buffer, aae_size_t length);
+#define aae_write write
+AAE_EXTERN_TOOL aae_size_t write(i32, const_byte_ptr, aae_size_t);
 #endif
 /** *Wrapper for linux's sys_exit **/
 #ifndef AAE_EXIT_FUNC
 #define AAE_EXIT_FUNC
-AAE_EXTERN_TOOL void aae_exit(i32 exit_code);
+AAE_EXTERN_TOOL void aae_exit(i32);
 #endif

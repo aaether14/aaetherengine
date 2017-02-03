@@ -30,5 +30,5 @@ typedef char byte;
 typedef char* byte_ptr;
 typedef const char* const_byte_ptr;
 
-
+#define AAE_EOF -1
 #endif
