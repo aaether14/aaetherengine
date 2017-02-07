@@ -15,7 +15,7 @@ i32 aae_strcmp(const_byte_ptr a, const_byte_ptr b);
 /** atol implementation **/
 i64 aae_atoi(const_byte_ptr s);
 /** ultoa implementation **/
-byte_ptr aae_ultoa(u64 v, aae_size_t o = 0ull); /** warning! if o is non-zero the output string will not be zero-terminated **/
+byte_ptr aae_ultoa(u64 v, u64 b = 10);
 /** ltoa implementation **/
 byte_ptr aae_ltoa(i64 v);
 /** dtoa implementation **/

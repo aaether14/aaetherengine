@@ -60,7 +60,7 @@ i64 aae_atol(const_byte_ptr s)
 	i64 value = 0;
 	i64 sign = 1;
 	const_byte_ptr p = s;
-	while (s && ((*p >= '0' && *p <= '9') || (p == s && *p == '-')))
+	while (s && (aae_isdigit(*p) || (p == s && *p == '-')))
 	{
 		if (p == s && *p == '-')
 		{
@@ -78,18 +78,21 @@ i64 aae_atol(const_byte_ptr s)
 
 
 static aae_thread_local byte m_ultoa_buffer[313]; /** will hold the largest base 10 representation of a double **/
+static aae_thread_local aae_size_t m_offset = 0ul;
 static aae_thread_local const_byte_ptr m_digits = "0123456789abcdef";
 /** ultoa implementation **/
-byte_ptr aae_ultoa(u64 v, aae_size_t o)
+byte_ptr aae_ultoa(u64 v, u64 b)
 {
-	byte_ptr p = m_ultoa_buffer + sizeof(m_ultoa_buffer) - o;
-	if (!o) *--p = '\0';
+	b = aae_min(b, 16);
+	byte_ptr p = m_ultoa_buffer + sizeof(m_ultoa_buffer) - m_offset;
+	if (!m_offset) *--p = '\0';
 	do
 	{
-		*--p = '0' + v % 10;
-		v /= 10;
+		*--p = *(m_digits + v % b);
+		v /= b;
 	}
 	while(v);
+	m_offset = 0ul;
 	return p;
 }
 
@@ -119,14 +122,18 @@ byte_ptr aae_dtoa(r64 v, u64 prc)
 	if (v < 0)
 	{
 		is_negative = true;
-		v = - v;
+		v = -v;
 	}
 	prc = aae_min(prc, 16);
 	u64 p10 = aae_pow10(prc);
 	u64 dp = (u64(v * p10)) % p10;
 	p = aae_ultoa(dp);
+	aae_size_t dp_s = prc - aae_strlen(p);
+	while (dp_s-- > 0) /** fill with 0's when necessary **/
+		*--p = '0';
 	*--p = '.';
-	p = aae_ultoa(((u64)v), prc + 2);
+	m_offset = prc + 2;
+	p = aae_ultoa((u64)v);
 	if (is_negative) *--p = '-';
 	return p;
 }
@@ -182,11 +189,6 @@ void aae_vsprintf(byte_ptr buf, const_byte_ptr fmt, va_list args)
 					t_string = aae_ultoa(t_u64);
 					break;
 				}
-				case 'x':
-				case 'X':
-				{
-					break;
-				}
 				case 'f':
 				case 'F':
 				{
@@ -205,6 +207,27 @@ void aae_vsprintf(byte_ptr buf, const_byte_ptr fmt, va_list args)
 				case 's':
 				{
 					t_string = (byte_ptr)va_arg(args, byte_ptr);
+					break;
+				}
+				case 'x':
+				case 'X':
+				{
+					t_u64 = (u64)va_arg(args, u64);
+					t_string = aae_ultoa(t_u64, 16);
+					break;
+				}
+				case 'b':
+				case 'B':
+				{
+					t_u64 = (u64)va_arg(args, u64);
+					t_string = aae_ultoa(t_u64, 2);
+					break;
+				}
+				case 'o':
+				case 'O':
+				{
+					t_u64 = (u64)va_arg(args, u64);
+					t_string = aae_ultoa(t_u64, 8);
 					break;
 				}
 			}
