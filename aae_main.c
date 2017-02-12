@@ -35,7 +35,7 @@ AAE_EXTERN_TOOL i32 aae_main()
 {
 	
 	byte buffer[1000];
-	aae_sprintf(buffer, "%ilu - %c - should also work with %4F ,,,,flo%5fats :))) --- %B", 534, 'Z', -0.052, 15.132, 25);
+	aae_sprintf(buffer, "%ilu - %c - should also work with %4F ,,,,flo%5fats :))) --- %X", 534, 'Z', -0.052, 15.132, aae_atol("26"));
 	aae_write(stderr, buffer, aae_strlen(buffer));
 
 	m_display = XOpenDisplay(NULL);

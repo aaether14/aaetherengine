@@ -9,14 +9,12 @@ enum __aae__std__files
 	stdout,
 	stderr
 };
+AAE_EXTERN_TOOL void exit(i32 exit_code);
+AAE_EXTERN_TOOL void write(i32 fd, const_byte_ptr buffer, aae_size_t length);
 #endif
 
 
-AAE_EXTERN_TOOL void exit(i32 exit_code);
-AAE_EXTERN_TOOL void write(i32 fd, const_byte_ptr buffer, aae_size_t length);
 aae_size_t aae_strlen(const char * s);
-
-
 void __aae_assert(const char * msg)
 {
 	

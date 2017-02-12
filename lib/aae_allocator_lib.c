@@ -1,6 +1,5 @@
-/** this allocator was designed for x86/_64 architecture **/
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdlib.h> /** qsort **/
 
 
 #ifndef NULL
@@ -12,9 +11,15 @@
 #include <sys/types.h> /** size_t **/
 #include <sys/mman.h> /** mmap, munmap **/
 #include <unistd.h> /** sysconf **/
+int32_t sched_getcpu(void);
 #define os_alloc(size) mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)
 #define os_dealloc(start, size) munmap(start, size)
+#define thread_local __thread /** assuming gcc **/
+#define get_current_cpu sched_getcpu
 #elif defined(AAE_WINDOWS_PLATFORM)
+#include <windows.h>
+#define thread_local __declspec(thread) /** assuming msvc **/
+#define get_current_cpu GetCurrentProcessorNumber
 #endif
 #ifndef AAE_MAX_SMALL_BLOCK_SIZE
 #define AAE_MAX_SMALL_BLOCK_SIZE 0x800
@@ -25,6 +30,9 @@
 #ifndef AAE_SUPERBLOCK_SIZE
 #define AAE_SUPERBLOCK_SIZE 0x2000
 #endif
+#ifndef AAE_NUMBER_OF_CPUS
+#define AAE_NUMBER_OF_CPUS 1
+#endif
 
 
 inline static size_t get_page_size()
@@ -34,6 +42,9 @@ inline static size_t get_page_size()
 		#if defined(AAE_LINUX_PLATFORM)
 		m_page_size = sysconf(_SC_PAGESIZE);
 		#elif defined(AAE_WINDOWS_PLATFORM)
+		SYSTEM_INFO c_system_info;
+    		GetSystemInfo(&c_system_info);
+    		m_page_size = c_system_info.dwPageSize;
 		#endif
 	return m_page_size;
 }
@@ -48,9 +59,9 @@ static uint32_t pointer_binary_search(uintptr_t* array, uint32_t left, uint32_t 
 	while (left <= right)
 	{
 		uint32_t middle = (uint32_t)((uint64_t)(left + right) >> 1);
-		if (array[middle] == value)
+		if (*(array + middle) == value)
 			return 1;
-		if (array[middle] < value)
+		if (*(array + middle) < value)
 			left = middle + 1;
 		else
 			right = middle - 1;
@@ -190,7 +201,7 @@ typedef struct __processor_heap ProcessorHeap;
 
 struct __descriptor 
 {
-	#ifdef AAE_32BIT_BUILD /** we need to keep 64 bit alignment **/
+	#ifdef AAE_32BIT_BUILD /** we need to keep 64 byte alignment to encode active blocks **/
 	uint32_t pad[9];
 	#else
 	uint32_t pad[6];
@@ -204,25 +215,17 @@ struct __descriptor
 };
 
 
-typedef struct
-{
-	uint32_t m_block_size;
-	uint32_t m_super_block_size;
-}SizeClass;
-
-
 struct __processor_heap
 {
 	volatile uintptr_t m_active;
+	uintptr_t m_size_class;
 	Descriptor* m_partial;
-	SizeClass* m_size_class;
 };
 
 
-static SizeClass m_size_classes[AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY] = {};
-__thread ProcessorHeap* m_heaps[AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY] = {};
-__thread HPRecord* volatile m_private_descriptor_rlist = NULL;	
-__thread size_t m_private_descriptor_rcount = 0;
+static ProcessorHeap* m_heaps[AAE_NUMBER_OF_CPUS][AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY] = {};
+static thread_local HPRecord* volatile m_private_descriptor_rlist = NULL;	
+static thread_local size_t m_private_descriptor_rcount = 0;
 
 
 static Descriptor* volatile m_freelist_descriptor_head = NULL;
@@ -292,7 +295,7 @@ static void DeallocateDescriptor(Descriptor* c_descriptor)
 		while (c_shared_hp_list_head)
 		{
 			if (c_shared_hp_list_head->m_is_active)
-				c_liniar_list[it++] = c_shared_hp_list_head->m_hazard_ptr;
+				*(c_liniar_list + it++) = c_shared_hp_list_head->m_hazard_ptr;
 			c_shared_hp_list_head = c_shared_hp_list_head->m_next;
 		}
 		qsort(c_liniar_list, it, sizeof(Descriptor*), pointer_compare);
@@ -344,9 +347,9 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 		if (!old_active)
 			return NULL;
 		if (get_active_credits(old_active) == 0)
-			new_active = 0;
+			new_active = 0; /** only one block left in active superblock **/
 		else
-			--new_active;
+			--new_active; /** mark allocation of a block from active superblock **/
 	}while(!__sync_bool_compare_and_swap((void** volatile)&c_heap->m_active, old_active, new_active));
 	Descriptor* c_descriptor = (Descriptor*)get_active_pointer(old_active);
 	do
@@ -383,11 +386,10 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 {
 	Descriptor* c_descriptor = AllocateDescriptor();	
-	c_descriptor->m_super_block = os_alloc(c_heap->m_size_class->m_super_block_size);
+	c_descriptor->m_super_block = os_alloc(AAE_SUPERBLOCK_SIZE);
 	c_descriptor->m_heap = c_heap;
-	c_descriptor->m_block_size = c_heap->m_size_class->m_block_size;
-	c_descriptor->m_number_of_blocks = c_heap->m_size_class->m_super_block_size / c_descriptor->m_block_size;
-
+	c_descriptor->m_block_size = c_heap->m_size_class;
+	c_descriptor->m_number_of_blocks = AAE_SUPERBLOCK_SIZE / c_descriptor->m_block_size;
 
 	organize_list(c_descriptor->m_super_block, c_descriptor->m_number_of_blocks, c_descriptor->m_block_size);
 	uintptr_t new_active = (uintptr_t)c_descriptor;
@@ -404,39 +406,34 @@ static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 	}
 	else
 	{
-		os_dealloc(c_descriptor->m_super_block, c_descriptor->m_heap->m_size_class->m_super_block_size);
+		os_dealloc(c_descriptor->m_super_block, AAE_SUPERBLOCK_SIZE);
 		DeallocateDescriptor(c_descriptor);
 		return NULL;
 	}
-
 }
 
 
-static ProcessorHeap* FindHeap(size_t size)
+static ProcessorHeap* FindHeap(size_t size) /** return the heap associated with the current cpu **/
 {
 	if (size == 0) return NULL;
 	/** We need to fit both the object and the descriptor in a single block **/
 	size += sizeof(Descriptor*);
 	if (size >= AAE_MAX_SMALL_BLOCK_SIZE) return NULL; /** large block **/
 
-	static uint32_t c_has_initialized_size_classes = 0;
-	if (!c_has_initialized_size_classes)
-	{
-		for (uint32_t it = 0; it < AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY; ++it)
-		{
-			m_size_classes[it].m_block_size = (it + 1) * AAE_GRANULARITY;
-			m_size_classes[it].m_super_block_size = AAE_SUPERBLOCK_SIZE;
-		}
-		c_has_initialized_size_classes = 1;
-	}
 	--size; /** an allocation of n * AAE_GRANULARITY should fit in the (n - 1)th size class **/
-	ProcessorHeap* c_heap = m_heaps[size / AAE_GRANULARITY];
-	if (c_heap == NULL) 
+	int32_t c_cpu = get_current_cpu(); /** this might change before update but it's rather infrequent **/
+	#ifdef AAE_LINUX_PLATFORM
+	if (c_cpu == -1)
+		return NULL; /** fallback to large block allocation **/
+	#endif
+	c_cpu = min(c_cpu, AAE_NUMBER_OF_CPUS - 1);
+	ProcessorHeap* c_heap = *((*(m_heaps + c_cpu)) + (size / AAE_GRANULARITY));
+	if (!c_heap) 
 	{
 		c_heap = (ProcessorHeap*)allocate_hp(); /** we used hp allocator because sizeof(HPRecord) = sizeof(ProcessorHeap) **/
 		c_heap->m_active = 0;
-		c_heap->m_size_class = &m_size_classes[size / AAE_GRANULARITY];
-		m_heaps[size / AAE_GRANULARITY] = c_heap;
+		c_heap->m_size_class = ((size / AAE_GRANULARITY) + 1) * AAE_GRANULARITY;
+		*((*(m_heaps + c_cpu)) + (size / AAE_GRANULARITY)) = c_heap;
 	}
 	return c_heap;
 }
@@ -452,7 +449,7 @@ void* aae_malloc(size_t size)
 		size_t header_size = (sizeof(Descriptor*)) << 1;
 		address = os_alloc(size + header_size);
 		*((uintptr_t*)address) = size; /** encode the size of the large block **/
-		*((uintptr_t*)(address + (header_size >> 1))) |= 0x1;
+		*((uintptr_t*)(address + (header_size >> 1))) |= 0x1; /** encode the fact that this is a large block **/
 		return (uintptr_t*)(address + header_size);
 	}
 	while (1)
