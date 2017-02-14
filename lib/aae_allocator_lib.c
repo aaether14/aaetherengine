@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h> /** qsort **/
+#include <string.h> /** memcpy **/
+#include <stdio.h>
 
 
 #ifndef NULL
@@ -179,6 +181,41 @@ static void release_hp(HPRecord* hp)
 }
 
 
+static void InsertRetiredNodeAndScan(void* c_ptr, void (*free_function)(void*), HPRecord** volatile m_private_list_head, size_t* m_private_list_count)
+{
+	HPRecord* c_hp = acquire_hp((HPRecord** volatile)m_private_list_head, NULL);
+	c_hp->m_hazard_ptr = c_ptr;
+	*m_private_list_count++;
+	if (*m_private_list_count > 2 * m_shared_hp_list_count)
+	{
+		uint32_t it = 0;
+		HPRecord* c_shared_hp_list_head = m_shared_hp_list_head;
+		size_t c_shared_hp_list_count = m_shared_hp_list_count; /** this is at most no. of shared hp's + 1 **/
+		void** c_liniar_list = (void**)os_alloc(c_shared_hp_list_count * sizeof(void*));
+		while (c_shared_hp_list_head)
+		{
+			if (c_shared_hp_list_head->m_is_active)
+				*(c_liniar_list + it++) = c_shared_hp_list_head->m_hazard_ptr;
+			c_shared_hp_list_head = c_shared_hp_list_head->m_next;
+		}
+		qsort(c_liniar_list, it, sizeof(void*), &pointer_compare);
+		HPRecord* c_private_list_head = *m_private_list_head;
+		while (c_private_list_head)
+		{
+			if (c_private_list_head->m_hazard_ptr)
+				if (!pointer_binary_search((uintptr_t*)c_liniar_list, 0, it - 1, (uintptr_t)c_private_list_head->m_hazard_ptr))
+				{
+					free_function(c_private_list_head->m_hazard_ptr);
+					release_hp(c_private_list_head);
+					--(*m_private_list_count);
+				}
+			c_private_list_head = c_private_list_head->m_next;
+		}
+		os_dealloc(c_liniar_list, c_shared_hp_list_count * sizeof(void*));
+	}
+}
+
+
 #define large_block(descriptor) (uintptr_t)descriptor & 0x1
 typedef enum
 {
@@ -240,10 +277,10 @@ static Descriptor* AllocateDescriptor()
 		HPRecord* c_hp = acquire_hp((HPRecord** volatile)&m_shared_hp_list_head, (size_t* volatile)&m_shared_hp_list_count);
 		do /** set hazard pointer **/
 		{
-			c_hp->m_hazard_ptr = m_freelist_descriptor_head;
+			c_descriptor = m_freelist_descriptor_head;
+			c_hp->m_hazard_ptr = c_descriptor;
 			__asm__ __volatile__ ("sfence" : : : "memory");
-			c_descriptor = c_hp->m_hazard_ptr;
-		}while(c_hp->m_hazard_ptr != m_freelist_descriptor_head);
+		}while(c_descriptor != m_freelist_descriptor_head);
 		if (c_descriptor)
 		{
 			Descriptor* c_next = c_descriptor->m_next;
@@ -269,50 +306,103 @@ static Descriptor* AllocateDescriptor()
 }
 
 
-static void descriptor_free_function(Descriptor* c_descriptor)
+static void descriptor_free_function(void* c_descriptor)
 {
 	Descriptor* old_head;
 	do
 	{
 		old_head = m_freelist_descriptor_head;
-		c_descriptor->m_next = old_head;
+		((Descriptor*)c_descriptor)->m_next = old_head;
 		__asm__ __volatile__ ("sfence" : : : "memory");
 	}while(!__sync_bool_compare_and_swap((void** volatile)&m_freelist_descriptor_head, old_head, c_descriptor));
 }
 
 
-static void DeallocateDescriptor(Descriptor* c_descriptor)
+static void DescriptorQueueLazyInitialization(Descriptor** volatile m_queue_head, Descriptor** volatile m_queue_tail)
 {
-	HPRecord* c_hp = acquire_hp((HPRecord** volatile)&m_private_descriptor_rlist, NULL);
-	c_hp->m_hazard_ptr = c_descriptor;
-	++m_private_descriptor_rcount;
-	if (m_private_descriptor_rcount > 2 * m_shared_hp_list_count)
+	Descriptor* c_descriptor;
+	while (*m_queue_head == NULL)
 	{
-		uint32_t it = 0;
-		HPRecord* c_shared_hp_list_head = m_shared_hp_list_head;
-		size_t c_shared_hp_list_count = m_shared_hp_list_count;	
-		Descriptor** c_liniar_list = (Descriptor**)os_alloc(c_shared_hp_list_count * sizeof(Descriptor*));
-		while (c_shared_hp_list_head)
-		{
-			if (c_shared_hp_list_head->m_is_active)
-				*(c_liniar_list + it++) = c_shared_hp_list_head->m_hazard_ptr;
-			c_shared_hp_list_head = c_shared_hp_list_head->m_next;
-		}
-		qsort(c_liniar_list, it, sizeof(Descriptor*), pointer_compare);
-		HPRecord* c_private_hp_list_head = m_private_descriptor_rlist;
-		while (c_private_hp_list_head)
-		{
-			if (c_private_hp_list_head->m_hazard_ptr)
-				if (!pointer_binary_search((uintptr_t*)c_liniar_list, 0, it - 1, (uintptr_t)c_private_hp_list_head->m_hazard_ptr))
-				{
-					descriptor_free_function(((Descriptor*)c_private_hp_list_head->m_hazard_ptr));
-					release_hp(c_private_hp_list_head);
-					--m_private_descriptor_rlist;
-				}
-			c_private_hp_list_head = c_private_hp_list_head->m_next;
-		}
-		os_dealloc(c_liniar_list, c_shared_hp_list_count * sizeof(Descriptor*));
+		c_descriptor = AllocateDescriptor();
+		c_descriptor->m_next = NULL;
+		__asm__ __volatile__ ("sfence" : : : "memory");
+		if (__sync_bool_compare_and_swap((void** volatile)m_queue_head, NULL, c_descriptor))
+			break;
+		InsertRetiredNodeAndScan(c_descriptor, &descriptor_free_function, 
+			(HPRecord** volatile)&m_private_descriptor_rlist, &m_private_descriptor_rcount);
 	}
+	while (*m_queue_tail == NULL)
+	{
+		if (__sync_bool_compare_and_swap((void** volatile)m_queue_tail, NULL, *m_queue_head))
+			break;
+	}
+}
+
+
+void DescriptorQueueEnqueue(Descriptor* m_descriptor, Descriptor** volatile m_queue_head, Descriptor** volatile m_queue_tail)
+{
+	DescriptorQueueLazyInitialization(m_queue_head, m_queue_tail);
+	Descriptor* t_descriptor, *t_next;
+	HPRecord* c_hp = acquire_hp((HPRecord** volatile)&m_shared_hp_list_head, (size_t* volatile)&m_shared_hp_list_count);
+	while (1)
+	{
+		release_hp(c_hp);
+		t_descriptor = *m_queue_tail;
+		c_hp->m_hazard_ptr = t_descriptor;
+		__asm__ __volatile__ ("sfence" : : : "memory");
+		if (*m_queue_tail != t_descriptor) continue;
+		t_next = t_descriptor->m_next;
+		if (*m_queue_tail != t_descriptor) continue;
+		if (t_next)
+		{
+			__sync_bool_compare_and_swap((void** volatile)m_queue_tail, t_descriptor, t_next);
+			continue;
+		}
+		if (__sync_bool_compare_and_swap((void** volatile)&((*m_queue_tail)->m_next), NULL, m_descriptor))
+			break;
+	}
+	__sync_bool_compare_and_swap((void** volatile)m_queue_tail, t_descriptor, m_descriptor);
+	release_hp(c_hp);
+}
+
+
+Descriptor* DescriptorQueueDequeue(Descriptor** volatile m_queue_head, Descriptor** volatile m_queue_tail)
+{
+	DescriptorQueueLazyInitialization(m_queue_head, m_queue_tail);
+	Descriptor* t_descriptor, *h_descriptor, *h_next, m_data;
+	HPRecord* c_hp1 = acquire_hp((HPRecord** volatile)&m_shared_hp_list_head, (size_t* volatile)&m_shared_hp_list_count);
+	HPRecord* c_hp2 = acquire_hp((HPRecord** volatile)&m_shared_hp_list_head, (size_t* volatile)&m_shared_hp_list_count);
+	while (1)
+	{
+		release_hp(c_hp1);
+		release_hp(c_hp2);
+		h_descriptor = *m_queue_head;
+		c_hp1->m_hazard_ptr = h_descriptor;
+		__asm__ __volatile__ ("sfence" : : : "memory");
+		if (*m_queue_head != h_descriptor) 
+			continue;
+		t_descriptor = *m_queue_tail;
+		h_next = h_descriptor->m_next;
+		c_hp2->m_hazard_ptr = h_next;
+		__asm__ __volatile__ ("sfence" : : : "memory");
+		if (*m_queue_head != h_descriptor) 
+			continue;
+		if (!h_next) 
+			return NULL;
+		if (h_descriptor == t_descriptor)
+		{
+			__sync_bool_compare_and_swap((void** volatile)m_queue_tail, t_descriptor, h_next);
+			continue;
+		}
+		memcpy(&m_data, h_next, sizeof(Descriptor)); /** h_next can't be modified before h_descriptor, therefore this is safe **/
+		__asm__ __volatile__ ("lfence" : : : "memory"); /** make sure h_next is copied into m_data before the CAS next line**/
+		if (__sync_bool_compare_and_swap((void** volatile)m_queue_head, h_descriptor, h_next))
+			break;
+	}
+	memcpy(h_descriptor, &m_data, sizeof(Descriptor)); /** still safe because we haven't released hp's **/
+	release_hp(c_hp1);
+	release_hp(c_hp2);
+	return h_descriptor;
 }
 
 
@@ -390,6 +480,7 @@ static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 	c_descriptor->m_heap = c_heap;
 	c_descriptor->m_block_size = c_heap->m_size_class;
 	c_descriptor->m_number_of_blocks = AAE_SUPERBLOCK_SIZE / c_descriptor->m_block_size;
+	c_descriptor->m_next = NULL; /** useful for descriptor queues **/
 
 	organize_list(c_descriptor->m_super_block, c_descriptor->m_number_of_blocks, c_descriptor->m_block_size);
 	uintptr_t new_active = (uintptr_t)c_descriptor;
@@ -407,7 +498,8 @@ static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 	else
 	{
 		os_dealloc(c_descriptor->m_super_block, AAE_SUPERBLOCK_SIZE);
-		DeallocateDescriptor(c_descriptor);
+		InsertRetiredNodeAndScan(c_descriptor, &descriptor_free_function, 
+			(HPRecord** volatile)&m_private_descriptor_rlist, &m_private_descriptor_rcount);
 		return NULL;
 	}
 }
