@@ -17,6 +17,9 @@ int32_t sched_getcpu(void);
 #define os_dealloc(start, size) munmap(start, size)
 #define thread_local __thread /** assuming gcc **/
 #define get_current_cpu sched_getcpu
+#define STORE_FENCE __asm__ __volatile__ ("sfence" : : : "memory")
+#define LOAD_FENCE __asm__ __volatile__ ("lfence" : : : "memory")
+#define CompareAndSwap(adress, expected, new) __sync_bool_compare_and_swap((adress), (expected), (new))
 #elif defined(AAE_WINDOWS_PLATFORM)
 #include <windows.h>
 #define thread_local __declspec(thread) /** assuming msvc **/
@@ -38,7 +41,7 @@ int32_t sched_getcpu(void);
 
 inline static size_t get_page_size()
 {
-	static size_t m_page_size = 0; 
+	static size_t m_page_size = 0;
 	if (!m_page_size)
 		#if defined(AAE_LINUX_PLATFORM)
 		m_page_size = sysconf(_SC_PAGESIZE);
@@ -76,7 +79,7 @@ inline static uintptr_t get_active_pointer(uintptr_t active)
 {
 	return active & (~(MAXCREDITS-0x1));
 }
-inline static void set_active_credits(uintptr_t* active, uint32_t credits) 
+inline static void set_active_credits(uintptr_t* active, uint32_t credits)
 {
 	*active = get_active_pointer(*active);
 	*active |= credits;
@@ -102,26 +105,25 @@ for (uint32_t it = 0; it < count - 1; ++it)					\
 	*((uintptr_t*)(ptr + it * stride)) = (it + 1);
 
 
-#define create_allocator(type, freelist)																\
+#define create_allocator(type, freelist)														\
 static type* Allocate##type()																\
 {																			\
 	type *c_node;																	\
-	for (;;)																	\
+	HPRecord* c_hp = acquire_hp(&m_shared_hp_list);													\
+	while(1)																	\
 	{																		\
 		/** we only break the infinite loop at the end so we can give the thread the chance to release hazard pointer **/			\
 		uint32_t success = 0;															\
-		HPRecord* c_hp = acquire_hp(&m_shared_hp_list);												\
-		do /** set hazard pointer **/														\
-		{																	\
-			c_node = freelist;														\
-			c_hp->m_hazard_ptr = c_node;													\
-			__asm__ __volatile__ ("sfence" : : : "memory");											\
-		}while(c_node != freelist);														\
+		release_hp(c_hp);															\
+		c_node = freelist;															\
+		c_hp->m_hazard_ptr = c_node;														\
+		STORE_FENCE;																\
+		if (freelist != c_node) continue;													\
 		if (c_node)																\
 		{																	\
 			type* c_next = c_node->m_next;													\
-			__asm__ __volatile__ ("sfence" : : : "memory");											\
-			success = __sync_bool_compare_and_swap((void** volatile)&freelist, c_node, c_next);						\
+			STORE_FENCE;															\
+			success = CompareAndSwap((void** volatile)&freelist, c_node, c_next);								\
 		}																	\
 		else																	\
 		{																	\
@@ -129,8 +131,8 @@ static type* Allocate##type()																\
 			organize_linked_list(c_node, get_page_size(), type)										\
 			/** organize descriptor super block in a linked list **/									\
 																			\
-			__asm__ __volatile__ ("sfence" : : : "memory");											\
-			success = __sync_bool_compare_and_swap((void** volatile)&freelist, NULL, c_node->m_next);					\
+			STORE_FENCE;															\
+			success = CompareAndSwap((void** volatile)&freelist, NULL, c_node->m_next);							\
 			if (!success) /** some other thread got ahead of us and allocated a descriptor block - abort mission **/			\
 				os_dealloc(c_node, get_page_size());											\
 		}																	\
@@ -150,8 +152,8 @@ static void Deallocate##type(void* c_node)														\
 	{																		\
 		old_head = freelist;															\
 		((type*)c_node)->m_next = old_head;													\
-		__asm__ __volatile__ ("sfence" : : : "memory");												\
-	}while(!__sync_bool_compare_and_swap((void** volatile)&freelist, old_head, c_node));								\
+		STORE_FENCE;																\
+	}while(!CompareAndSwap((void** volatile)&freelist, old_head, c_node));										\
 }
 
 
@@ -162,10 +164,10 @@ struct __hp_record /** hazard pointer structure **/
 	void* m_hazard_ptr;
 	uintptr_t m_is_active;
 };
-typedef struct 
+typedef struct
 {
 	HPRecord* volatile m_hp_head;
-	size_t volatile m_hp_count;	
+	size_t volatile m_hp_count;
 }HPRecordList;
 static HPRecordList m_shared_hp_list = {NULL, 0};
 
@@ -209,7 +211,7 @@ static HPRecord* acquire_hp(HPRecordList* m_list)
 	}
 
 	size_t old_length;
-	do 
+	do
 	{
 		old_length = m_list->m_hp_count;
 	}while(!__sync_bool_compare_and_swap((size_t* volatile)&m_list->m_hp_count, old_length, old_length + 1));
@@ -236,7 +238,7 @@ static void release_hp(HPRecord* hp)
 
 
 static void InsertRetiredNode(HPRecordList *c_retired_list, void* c_ptr)
-{	
+{
 	size_t c_retired_list_actual_count = c_retired_list->m_hp_count + 1;
 	HPRecord* c_hp = acquire_hp(c_retired_list);
 	c_hp->m_hazard_ptr = c_ptr;
@@ -296,7 +298,7 @@ typedef struct __descriptor Descriptor;
 typedef struct __processor_heap ProcessorHeap;
 
 
-struct __descriptor 
+struct __descriptor
 {
 	#ifdef AAE_32BIT_BUILD /** we need to keep 64 byte alignment to encode active blocks **/
 	uint32_t pad[9];
@@ -333,7 +335,7 @@ struct __queue_node
 	QueueNode* volatile m_next;
 	void* m_data;
 }*volatile m_freelist_queue_head = NULL;
-typedef struct 
+typedef struct
 {
 	QueueNode* volatile m_head;
 	QueueNode* volatile m_tail;
@@ -415,7 +417,7 @@ static void* QueueDequeue(Queue* m_queue)
 		c_hp2->m_hazard_ptr = h_next;
 		__asm__ __volatile__ ("sfence" : : : "memory");
 		if (m_queue->m_head != h_node) continue;
-		if (!h_next) 
+		if (!h_next)
 			return NULL;
 		if (h_node == t_node)
 		{
@@ -423,7 +425,7 @@ static void* QueueDequeue(Queue* m_queue)
 			continue;
 		}
 		m_data = h_next->m_data;
-		__asm__ __volatile__ ("lfence" : : : "memory"); 
+		__asm__ __volatile__ ("lfence" : : : "memory");
 		if (__sync_bool_compare_and_swap((void** volatile)&m_queue->m_head, h_node, h_next))
 			break;
 	}
@@ -483,7 +485,7 @@ static void HeapPutPartial(Descriptor* c_descriptor)
 		previous = c_descriptor->m_heap->m_partial;
 	}while(!__sync_bool_compare_and_swap((Descriptor** volatile)&c_descriptor->m_heap->m_partial, previous, c_descriptor));
 	if (previous)
-		ListPutPartial(previous, previous->m_heap->m_size_class);	
+		ListPutPartial(previous, previous->m_heap->m_size_class);
 }
 
 
@@ -513,8 +515,8 @@ static void UpdateActive(ProcessorHeap* c_heap, Descriptor* c_descriptor, uint32
 		new_anchor.m_count += more_credits;
 		new_anchor.m_state = PARTIAL;
 		__asm__ __volatile__ ("sfence" : : : "memory");
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
-					    *(uint64_t* volatile)&old_anchor, 
+	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
+					    *(uint64_t* volatile)&old_anchor,
 					    *(uint64_t* volatile)&new_anchor));
 	HeapPutPartial(c_descriptor);
 }
@@ -557,8 +559,8 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 			}
 		}
 		__asm__ __volatile__ ("sfence" : : : "memory");
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
-					    *(uint64_t* volatile)&old_anchor, 
+	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
+					    *(uint64_t* volatile)&old_anchor,
 					    *(uint64_t* volatile)&new_anchor));
 	if (get_active_credits(old_active) == 0 && old_anchor.m_count > 0)
 		UpdateActive(c_heap, c_descriptor, more_credits);
@@ -590,8 +592,8 @@ static void* AllocateFromPartialSuperBlock(ProcessorHeap* c_heap)
 		more_credits = min(old_anchor.m_count - 1, MAXCREDITS);
 		new_anchor.m_count -= (more_credits + 1);
 		new_anchor.m_state = (more_credits > 0) ? ACTIVE : FULL;
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
-					    *(uint64_t* volatile)&old_anchor, 
+	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
+					    *(uint64_t* volatile)&old_anchor,
 					    *(uint64_t* volatile)&new_anchor));
 	do
 	{
@@ -600,8 +602,8 @@ static void* AllocateFromPartialSuperBlock(ProcessorHeap* c_heap)
 		uint32_t next = *((uintptr_t*)address);
 		new_anchor.m_available = next;
 		++new_anchor.m_tag;
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
-					    *(uint64_t* volatile)&old_anchor, 
+	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
+					    *(uint64_t* volatile)&old_anchor,
 					    *(uint64_t* volatile)&new_anchor));
 	if (more_credits > 0)
 		UpdateActive(c_heap, c_descriptor, more_credits);
@@ -613,7 +615,7 @@ static void* AllocateFromPartialSuperBlock(ProcessorHeap* c_heap)
 
 static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 {
-	Descriptor* c_descriptor = AllocateDescriptor();	
+	Descriptor* c_descriptor = AllocateDescriptor();
 	c_descriptor->m_super_block = os_alloc(AAE_SUPERBLOCK_SIZE);
 	c_descriptor->m_heap = c_heap;
 	c_descriptor->m_block_size = c_heap->m_size_class;
@@ -656,7 +658,7 @@ static ProcessorHeap* FindHeap(size_t size) /** return the heap associated with 
 	#endif
 	c_cpu = min(c_cpu, AAE_NUMBER_OF_CPUS - 1);
 	ProcessorHeap* c_heap = *((*(m_heaps + c_cpu)) + (size / AAE_GRANULARITY));
-	if (!c_heap) 
+	if (!c_heap)
 	{
 		c_heap = (ProcessorHeap*)allocate_hp(); /** we used hp allocator because sizeof(HPRecord) = sizeof(ProcessorHeap) **/
 		c_heap->m_active = 0;
@@ -674,7 +676,7 @@ void* aae_malloc(size_t size)
 		return NULL;
 	ProcessorHeap *c_heap = FindHeap(size);
 	void* address;
-	if (!c_heap) 
+	if (!c_heap)
 	{
 		size_t header_size = (sizeof(Descriptor*)) << 1;
 		address = os_alloc(size + header_size);
@@ -688,7 +690,7 @@ void* aae_malloc(size_t size)
 		if (address) return address;
 		address = AllocateFromPartialSuperBlock(c_heap);
 		if (address) return address;
-		address = AllocateFromNewSuperblock(c_heap);	
+		address = AllocateFromNewSuperblock(c_heap);
 		if (address) return address;
 	}
 }
@@ -720,15 +722,15 @@ void aae_free(void* start)
 		{
 			c_heap = c_descriptor->m_heap;
 			__asm__ __volatile__ ("lfence" : : : "memory");
-			new_anchor.m_state = EMPTY;	
+			new_anchor.m_state = EMPTY;
 		}
 		else
 		{
 			new_anchor.m_count++;
 		}
 		__asm__ __volatile__ ("sfence" : : : "memory");
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor, 
-					    *(uint64_t* volatile)&old_anchor, 
+	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
+					    *(uint64_t* volatile)&old_anchor,
 					    *(uint64_t* volatile)&new_anchor));
 	if (new_anchor.m_state == EMPTY)
 	{

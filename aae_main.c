@@ -88,7 +88,7 @@ void* run_test(void*)
     }
     fprintf(stderr, "Thread %lo adjusted timing: %ld.%06ld seconds for %d requests"
         " of %d bytes.\n", pthread_self(),
-        adjusted.tv_sec, adjusted.tv_usec, 
+        adjusted.tv_sec, adjusted.tv_usec,
         total_iterations,
         (int) request_size);
 
