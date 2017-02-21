@@ -10,6 +10,6 @@
 AAE_EXTERN_TOOL void* aae_malloc(aae_size_t numbytes);
 /** free memory segment on the heap starting at firstbyte **/
 AAE_EXTERN_TOOL void aae_free(void * firstbyte);
-/** realloc implementation **/
+/** allocate a new segment on the heap and copy old data **/
 AAE_EXTERN_TOOL void* aae_realloc(void*firstbyte, aae_size_t numbytes);
 #endif
