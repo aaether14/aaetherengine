@@ -17,8 +17,7 @@ int32_t sched_getcpu(void);
 #define os_dealloc(start, size) munmap(start, size)
 #define thread_local __thread /** assuming gcc **/
 #define get_current_cpu sched_getcpu
-#define STORE_FENCE __asm__ __volatile__ ("sfence" : : : "memory")
-#define LOAD_FENCE __asm__ __volatile__ ("lfence" : : : "memory")
+#define MEMORY_FENCE __asm__ __volatile__("mfence" : : : "memory")
 #define CompareAndSwap(adress, expected, new) __sync_bool_compare_and_swap((adress), (expected), (new))
 #elif defined(AAE_WINDOWS_PLATFORM)
 #include <windows.h>
@@ -105,25 +104,22 @@ for (uint32_t it = 0; it < count - 1; ++it)					\
 	*((uintptr_t*)(ptr + it * stride)) = (it + 1);
 
 
-#define create_allocator(type, freelist)														\
+#define create_allocator(type, freelist) /** requires volatile freelist **/										\
 static type* Allocate##type()																\
 {																			\
 	type *c_node;																	\
 	HPRecord* c_hp = acquire_hp(&m_shared_hp_list);													\
 	while(1)																	\
 	{																		\
-		/** we only break the infinite loop at the end so we can give the thread the chance to release hazard pointer **/			\
 		uint32_t success = 0;															\
-		release_hp(c_hp);															\
 		c_node = freelist;															\
 		c_hp->m_hazard_ptr = c_node;														\
-		STORE_FENCE;																\
+		MEMORY_FENCE;																\
 		if (freelist != c_node) continue;													\
 		if (c_node)																\
 		{																	\
 			type* c_next = c_node->m_next;													\
-			STORE_FENCE;															\
-			success = CompareAndSwap((void** volatile)&freelist, c_node, c_next);								\
+			success = CompareAndSwap((void* volatile*)&freelist, c_node, c_next);								\
 		}																	\
 		else																	\
 		{																	\
@@ -131,8 +127,8 @@ static type* Allocate##type()																\
 			organize_linked_list(c_node, get_page_size(), type)										\
 			/** organize descriptor super block in a linked list **/									\
 																			\
-			STORE_FENCE;															\
-			success = CompareAndSwap((void** volatile)&freelist, NULL, c_node->m_next);							\
+			MEMORY_FENCE;															\
+			success = CompareAndSwap((void* volatile*)&freelist, NULL, c_node->m_next);							\
 			if (!success) /** some other thread got ahead of us and allocated a descriptor block - abort mission **/			\
 				os_dealloc(c_node, get_page_size());											\
 		}																	\
@@ -152,8 +148,8 @@ static void Deallocate##type(void* c_node)														\
 	{																		\
 		old_head = freelist;															\
 		((type*)c_node)->m_next = old_head;													\
-		STORE_FENCE;																\
-	}while(!CompareAndSwap((void** volatile)&freelist, old_head, c_node));										\
+		MEMORY_FENCE;																\
+	}while(!CompareAndSwap(&freelist, old_head, c_node));												\
 }
 
 
@@ -161,8 +157,8 @@ typedef struct __hp_record HPRecord;
 struct __hp_record /** hazard pointer structure **/
 {
 	HPRecord* volatile m_next;
-	void* m_hazard_ptr;
-	uintptr_t m_is_active;
+	void* volatile m_hazard_ptr;
+	uintptr_t volatile m_is_active;
 };
 typedef struct
 {
@@ -176,14 +172,13 @@ static HPRecord* volatile m_freelist_hp_head = NULL;
 static HPRecord* allocate_hp()
 {
 	HPRecord* c_hp;
-	for (;;)
+	while (1)
 	{
 		c_hp = m_freelist_hp_head;
 		if (c_hp)
 		{
 			HPRecord* c_next = c_hp->m_next;
-			__asm__ __volatile__ ("sfence" : : : "memory");
-			if (__sync_bool_compare_and_swap((void** volatile)&m_freelist_hp_head, c_hp, c_next)) break;
+			if (CompareAndSwap((void* volatile*)&m_freelist_hp_head, c_hp, c_next)) break;
 		}
 		else
 		{
@@ -191,8 +186,8 @@ static HPRecord* allocate_hp()
 			/** oragnize hazard pointer superblock in a linked list **/
 			organize_linked_list(c_hp, get_page_size(), HPRecord)
 
-			__asm__ __volatile__ ("sfence" : : : "memory");
-			if (__sync_bool_compare_and_swap((void** volatile)&m_freelist_hp_head, NULL, c_hp->m_next)) break;
+			MEMORY_FENCE;
+			if (CompareAndSwap((void* volatile*)&m_freelist_hp_head, NULL, c_hp->m_next)) break;
 			os_dealloc(c_hp, get_page_size());
 		}
 	}
@@ -205,7 +200,7 @@ static HPRecord* acquire_hp(HPRecordList* m_list)
 	HPRecord* c_hp = m_list->m_hp_head;
 	for (; c_hp; c_hp = c_hp->m_next)
 	{
-		if (c_hp->m_is_active || !__sync_bool_compare_and_swap(&c_hp->m_is_active, 0, 1))
+		if (c_hp->m_is_active || !CompareAndSwap(&c_hp->m_is_active, 0, 1))
 			continue;
 		return c_hp;
 	}
@@ -214,7 +209,7 @@ static HPRecord* acquire_hp(HPRecordList* m_list)
 	do
 	{
 		old_length = m_list->m_hp_count;
-	}while(!__sync_bool_compare_and_swap((size_t* volatile)&m_list->m_hp_count, old_length, old_length + 1));
+	}while(!CompareAndSwap((size_t volatile*)&m_list->m_hp_count, old_length, old_length + 1));
 
       	c_hp = allocate_hp();
 	c_hp->m_is_active = 1;
@@ -224,16 +219,16 @@ static HPRecord* acquire_hp(HPRecordList* m_list)
 	{
 		old_head = m_list->m_hp_head;
 		c_hp->m_next = old_head;
-		__asm__ __volatile__ ("sfence" : : : "memory");
-	}while(!__sync_bool_compare_and_swap((void** volatile)&m_list->m_hp_head, old_head, c_hp));
+		MEMORY_FENCE;
+	}while(!CompareAndSwap((void* volatile*)&m_list->m_hp_head, old_head, c_hp));
 	return c_hp;
 }
 
 
-static void release_hp(HPRecord* hp)
+static void release_hp(HPRecord* m_hp)
 {
-	hp->m_is_active = 0;
-	hp->m_hazard_ptr = NULL;
+	m_hp->m_is_active = 0;
+	m_hp->m_hazard_ptr = NULL;
 }
 
 
@@ -290,7 +285,7 @@ typedef enum
 
 typedef struct
 {
-	uint64_t m_available:10, m_count:10, m_state:2, m_tag:42;
+	uint64_t m_available:15, m_count:15, m_state:2, m_tag:32;
 }Anchor;
 
 
@@ -300,12 +295,12 @@ typedef struct __processor_heap ProcessorHeap;
 
 struct __descriptor
 {
-	#ifdef AAE_32BIT_BUILD /** we need to keep 64 byte alignment to encode active blocks **/
+	#ifdef AAE_32BIT_BUILD /** we need to keep 64 byte alignment to encode credits into active blocks **/
 	uint32_t pad[9];
 	#else
 	uint32_t pad[6];
 	#endif
-	volatile Anchor m_anchor;
+	Anchor volatile m_anchor;
 	Descriptor* volatile m_next;
 	ProcessorHeap* m_heap;
 	void* m_super_block;
@@ -316,9 +311,9 @@ struct __descriptor
 
 struct __processor_heap
 {
-	volatile uintptr_t m_active;
 	uintptr_t m_size_class;
-	Descriptor* m_partial;
+	uintptr_t volatile m_active;
+	Descriptor* volatile m_partial;
 };
 
 
@@ -353,17 +348,13 @@ static void QueueLazyInitialization(Queue* m_queue)
 	{
 		c_node = AllocateQueueNode();
 		c_node->m_next = NULL;
-		__asm__ __volatile__ ("sfence" : : : "memory");
-		if (__sync_bool_compare_and_swap((void** volatile)&m_queue->m_head, NULL, c_node))
-			break;
+		MEMORY_FENCE;
+		if (CompareAndSwap((void* volatile*)&m_queue->m_head, NULL, c_node)) break;
 		InsertRetiredNode(&m_retired_queue_list, c_node);
 		ScanRetiredNodes(&m_retired_queue_list, &m_shared_hp_list, DeallocateQueueNode);
 	}
 	while (m_queue->m_tail == NULL)
-	{
-		if (__sync_bool_compare_and_swap((void** volatile)&m_queue->m_tail, NULL, m_queue->m_head))
-			break;
-	}
+		if (CompareAndSwap((void* volatile*)&m_queue->m_tail, NULL, m_queue->m_head)) break;
 }
 
 
@@ -377,22 +368,16 @@ static void QueueEnqueue(void* m_data, Queue* m_queue)
 	HPRecord* c_hp = acquire_hp(&m_shared_hp_list);
 	while (1)
 	{
-		release_hp(c_hp);
 		t_node = m_queue->m_tail;
 		c_hp->m_hazard_ptr = t_node;
-		__asm__ __volatile__ ("sfence" : : : "memory");
+		MEMORY_FENCE;
 		if (m_queue->m_tail != t_node) continue;
 		t_next = t_node->m_next;
 		if (m_queue->m_tail != t_node) continue;
-		if (t_next)
-		{
-			__sync_bool_compare_and_swap((void** volatile)&m_queue->m_tail, t_node, t_next);
-			continue;
-		}
-		if (__sync_bool_compare_and_swap((void** volatile)&m_queue->m_tail->m_next, NULL, m_node))
-			break;
+		if (t_next) { CompareAndSwap((void* volatile*)&m_queue->m_tail, t_node, t_next); continue; }
+		if (CompareAndSwap((void* volatile*)&m_queue->m_tail->m_next, NULL, m_node)) break;
 	}
-	__sync_bool_compare_and_swap((void** volatile)&m_queue->m_tail, t_node, m_node);
+	CompareAndSwap((void* volatile*)&m_queue->m_tail, t_node, m_node);
 	release_hp(c_hp);
 }
 

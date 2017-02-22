@@ -26,38 +26,14 @@ static unsigned iteration_count = 10000000;
 static unsigned thread_count = 50;
 
 
-void * dummy(unsigned i)
-{
-    return NULL;
-}
-
 
 void* run_test(void*)
 {
     unsigned int i;
     unsigned request_size = size;
     unsigned total_iterations = iteration_count;
-    struct timeval start, end, null, elapsed, adjusted;
+    struct timeval start, end, elapsed, adjusted;
 
-    /*
-     * Time a null loop.  We'll subtract this from the final
-     * malloc loop results to get a more accurate value.
-     */
-    gettimeofday(&start, NULL);
-    for (i = 0; i < total_iterations; i++)
-    {
-        void* buf;
-        buf = dummy(i);
-        buf = dummy(i);
-    }
-    gettimeofday(&end, NULL);
-
-    null.tv_sec = end.tv_sec - start.tv_sec;
-    null.tv_usec = end.tv_usec - start.tv_usec;
-    if (null.tv_usec < 0) {
-        null.tv_sec--;
-        null.tv_usec += 1000000;
-    }
 
     /*
      * Run the real malloc test
@@ -77,20 +53,12 @@ void* run_test(void*)
         elapsed.tv_usec += 1000000;
     }
 
-    /*
-     * Adjust elapsed time by null loop time
-     */
-    adjusted.tv_sec = elapsed.tv_sec - null.tv_sec;
-    adjusted.tv_usec = elapsed.tv_usec - null.tv_usec;
-    if (adjusted.tv_usec < 0) {
-        adjusted.tv_sec--;
-        adjusted.tv_usec += 1000000;
-    }
-    fprintf(stderr, "Thread %lo adjusted timing: %ld.%06ld seconds for %d requests"
+    /**fprintf(stderr, "Thread %lo adjusted timing: %ld.%06ld seconds for %d requests"
         " of %d bytes.\n", pthread_self(),
         adjusted.tv_sec, adjusted.tv_usec,
         total_iterations,
         (int) request_size);
+    **/
 
     return NULL;
 }
