@@ -391,28 +391,19 @@ static void* QueueDequeue(Queue* m_queue)
 	HPRecord* c_hp2 = acquire_hp(&m_shared_hp_list);
 	while (1)
 	{
-		release_hp(c_hp1);
-		release_hp(c_hp2);
 		h_node = m_queue->m_head;
 		c_hp1->m_hazard_ptr = h_node;
-		__asm__ __volatile__ ("sfence" : : : "memory");
+		MEMORY_FENCE;
 		if (m_queue->m_head != h_node) continue;
 		t_node = m_queue->m_tail;
 		h_next = h_node->m_next;
 		c_hp2->m_hazard_ptr = h_next;
-		__asm__ __volatile__ ("sfence" : : : "memory");
+		MEMORY_FENCE;
 		if (m_queue->m_head != h_node) continue;
-		if (!h_next)
-			return NULL;
-		if (h_node == t_node)
-		{
-			__sync_bool_compare_and_swap((void** volatile)&m_queue->m_tail, t_node, h_next);
-			continue;
-		}
+		if (!h_next) return NULL;
+		if (h_node == t_node) { CompareAndSwap((void* volatile*)&m_queue->m_tail, t_node, h_next); continue; }
 		m_data = h_next->m_data;
-		__asm__ __volatile__ ("lfence" : : : "memory");
-		if (__sync_bool_compare_and_swap((void** volatile)&m_queue->m_head, h_node, h_next))
-			break;
+		if (CompareAndSwap((void* volatile*)&m_queue->m_head, h_node, h_next)) break;
 	}
 	release_hp(c_hp1);
 	release_hp(c_hp2);
@@ -425,14 +416,14 @@ static void* QueueDequeue(Queue* m_queue)
 static void ListPutPartial(Descriptor* c_descriptor, uintptr_t m_size_class)
 {
 	uint16_t c_index = (m_size_class / AAE_GRANULARITY) - 1;
-	QueueEnqueue(c_descriptor, &m_queues[c_index]);
+	QueueEnqueue(c_descriptor, m_queues + c_index);
 }
 
 
 static Descriptor* ListGetPartial(uintptr_t m_size_class)
 {
 	uint16_t c_index = (m_size_class / AAE_GRANULARITY) - 1;
-	return QueueDequeue(&m_queues[c_index]);
+	return QueueDequeue(m_queues + c_index);
 }
 
 
@@ -440,19 +431,13 @@ static void ListRemoveEmptyDescriptor(uintptr_t m_size_class)
 {
 	Descriptor* c_descriptor;
 	while (c_descriptor = ListGetPartial(m_size_class))
-	{
-		if (c_descriptor && c_descriptor->m_anchor.m_state != EMPTY)
-		{
-			ListPutPartial(c_descriptor, m_size_class);
-			break;
-		}
-	}
+		if (c_descriptor->m_anchor.m_state != EMPTY) { ListPutPartial(c_descriptor, m_size_class); break; }
 }
 
 
 static void RemoveEmptyDescriptor(ProcessorHeap* c_heap, Descriptor* c_descriptor)
 {
-	if (__sync_bool_compare_and_swap((Descriptor** volatile)&c_heap->m_partial, c_descriptor, NULL))
+	if (CompareAndSwap((void* volatile*)&c_heap->m_partial, c_descriptor, NULL))
 	{
 		InsertRetiredNode(&m_retired_descriptor_list, c_descriptor);
 		ScanRetiredNodes(&m_retired_descriptor_list, &m_shared_hp_list, DeallocateDescriptor);

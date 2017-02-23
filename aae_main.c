@@ -22,7 +22,7 @@
 
 
 static unsigned size = 512;
-static unsigned iteration_count = 10000000;
+static unsigned iteration_count = 1000000;
 static unsigned thread_count = 50;
 
 
@@ -32,8 +32,7 @@ void* run_test(void*)
     unsigned int i;
     unsigned request_size = size;
     unsigned total_iterations = iteration_count;
-    struct timeval start, end, elapsed, adjusted;
-
+    struct timeval start, end, elapsed;
 
     /*
      * Run the real malloc test
@@ -53,12 +52,11 @@ void* run_test(void*)
         elapsed.tv_usec += 1000000;
     }
 
-    /**fprintf(stderr, "Thread %lo adjusted timing: %ld.%06ld seconds for %d requests"
+    fprintf(stderr, "Thread %lo elapsed timing: %ld.%06ld seconds for %d requests"
         " of %d bytes.\n", pthread_self(),
-        adjusted.tv_sec, adjusted.tv_usec,
+       	elapsed.tv_sec, elapsed.tv_usec,
         total_iterations,
         (int) request_size);
-    **/
 
     return NULL;
 }
