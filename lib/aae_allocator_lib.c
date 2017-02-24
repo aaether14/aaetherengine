@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h> /** qsort **/
 #include <string.h> /** memcpy **/
+#include <boost/preprocessor/repetition/enum.hpp>
 
 
 #ifndef NULL
@@ -18,20 +19,22 @@ int32_t sched_getcpu(void);
 #define thread_local __thread /** assuming gcc **/
 #define get_current_cpu sched_getcpu
 #define MEMORY_FENCE __asm__ __volatile__("mfence" : : : "memory")
+#define STORE_FENCE __asm__ __volatile__("sfence" : : : "memory")
+#define LOAD_FENCE __asm__ __volatile__("lfence" : : : "memory")
 #define CompareAndSwap(adress, expected, new) __sync_bool_compare_and_swap((adress), (expected), (new))
 #elif defined(AAE_WINDOWS_PLATFORM)
 #include <windows.h>
 #define thread_local __declspec(thread) /** assuming msvc **/
 #define get_current_cpu GetCurrentProcessorNumber
 #endif
-#ifndef AAE_MAX_SMALL_BLOCK_SIZE
-#define AAE_MAX_SMALL_BLOCK_SIZE 0x800
+#ifndef AAE_SIZE_CLASSES
+#define AAE_SIZE_CLASSES 256 /** can't be bigger than 256 **/
 #endif
 #ifndef AAE_GRANULARITY
-#define AAE_GRANULARITY 0x8
+#define AAE_GRANULARITY 8
 #endif
 #ifndef AAE_SUPERBLOCK_SIZE
-#define AAE_SUPERBLOCK_SIZE 0x4000
+#define AAE_SUPERBLOCK_SIZE 16384
 #endif
 #ifndef AAE_NUMBER_OF_CPUS
 #define AAE_NUMBER_OF_CPUS 1
@@ -127,7 +130,7 @@ static type* Allocate##type()																\
 			organize_linked_list(c_node, get_page_size(), type)										\
 			/** organize descriptor super block in a linked list **/									\
 																			\
-			MEMORY_FENCE;															\
+			STORE_FENCE;															\
 			success = CompareAndSwap((void* volatile*)&freelist, NULL, c_node->m_next);							\
 			if (!success) /** some other thread got ahead of us and allocated a descriptor block - abort mission **/			\
 				os_dealloc(c_node, get_page_size());											\
@@ -148,7 +151,7 @@ static void Deallocate##type(void* c_node)														\
 	{																		\
 		old_head = freelist;															\
 		((type*)c_node)->m_next = old_head;													\
-		MEMORY_FENCE;																\
+		STORE_FENCE;																\
 	}while(!CompareAndSwap(&freelist, old_head, c_node));												\
 }
 
@@ -186,7 +189,7 @@ static HPRecord* allocate_hp()
 			/** oragnize hazard pointer superblock in a linked list **/
 			organize_linked_list(c_hp, get_page_size(), HPRecord)
 
-			MEMORY_FENCE;
+			STORE_FENCE;
 			if (CompareAndSwap((void* volatile*)&m_freelist_hp_head, NULL, c_hp->m_next)) break;
 			os_dealloc(c_hp, get_page_size());
 		}
@@ -219,7 +222,7 @@ static HPRecord* acquire_hp(HPRecordList* m_list)
 	{
 		old_head = m_list->m_hp_head;
 		c_hp->m_next = old_head;
-		MEMORY_FENCE;
+		STORE_FENCE;
 	}while(!CompareAndSwap((void* volatile*)&m_list->m_hp_head, old_head, c_hp));
 	return c_hp;
 }
@@ -317,7 +320,12 @@ struct __processor_heap
 };
 
 
-static ProcessorHeap* m_heaps[AAE_NUMBER_OF_CPUS][AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY] = {};
+#define ProcessorHeapStaticInitialize(z, n, data) {((n+1)*AAE_GRANULARITY), 0, NULL}
+#define PerCPUProcessorHeapStaticInitialize { BOOST_PP_ENUM(AAE_SIZE_CLASSES, ProcessorHeapStaticInitialize, ~) }
+#define PerCPUProcessorHeapStaticInitializeMacro(z, n, text) PerCPUProcessorHeapStaticInitialize
+static ProcessorHeap m_heaps[AAE_NUMBER_OF_CPUS][AAE_SIZE_CLASSES] = {BOOST_PP_ENUM(AAE_NUMBER_OF_CPUS, PerCPUProcessorHeapStaticInitializeMacro, ~)};
+
+
 static thread_local HPRecordList m_retired_descriptor_list = {NULL, 0};
 static Descriptor* volatile m_freelist_descriptor_head = NULL;
 create_allocator(Descriptor, m_freelist_descriptor_head);
@@ -335,7 +343,7 @@ typedef struct
 	QueueNode* volatile m_head;
 	QueueNode* volatile m_tail;
 }Queue;
-static Queue m_queues[AAE_MAX_SMALL_BLOCK_SIZE / AAE_GRANULARITY] = {}; /** one for each size class **/
+static Queue m_queues[AAE_SIZE_CLASSES] = {}; /** one for each size class **/
 static thread_local HPRecordList m_retired_queue_list = {NULL, 0};
 create_allocator(QueueNode, m_freelist_queue_head);
 create_deallocator(QueueNode, m_freelist_queue_head);
@@ -348,7 +356,7 @@ static void QueueLazyInitialization(Queue* m_queue)
 	{
 		c_node = AllocateQueueNode();
 		c_node->m_next = NULL;
-		MEMORY_FENCE;
+		STORE_FENCE;
 		if (CompareAndSwap((void* volatile*)&m_queue->m_head, NULL, c_node)) break;
 		InsertRetiredNode(&m_retired_queue_list, c_node);
 		ScanRetiredNodes(&m_retired_queue_list, &m_shared_hp_list, DeallocateQueueNode);
@@ -464,9 +472,8 @@ static Descriptor* HeapGetPartial(ProcessorHeap* c_heap)
 	do
 	{
 		c_descriptor = c_heap->m_partial;
-		if (c_descriptor == NULL)
-			return ListGetPartial(c_heap->m_size_class);
-	}while(!__sync_bool_compare_and_swap((Descriptor** volatile)&c_heap->m_partial, c_descriptor, NULL));
+		if (!c_descriptor) return ListGetPartial(c_heap->m_size_class);
+	}while(!CompareAndSwap((void* volatile*)&c_heap->m_partial, c_descriptor, NULL));
 	return c_descriptor;
 }
 
@@ -475,7 +482,7 @@ static void UpdateActive(ProcessorHeap* c_heap, Descriptor* c_descriptor, uint32
 {
 	uintptr_t new_active = (uintptr_t)c_descriptor;
 	set_active_credits(&new_active, more_credits - 1);
-	if (__sync_bool_compare_and_swap((void** volatile)&c_heap->m_active, NULL, new_active)) return;
+	if (CompareAndSwap((uintptr_t volatile*)&c_heap->m_active, NULL, new_active)) return;
 
 	Anchor new_anchor, old_anchor;
 	do
@@ -483,10 +490,8 @@ static void UpdateActive(ProcessorHeap* c_heap, Descriptor* c_descriptor, uint32
 		new_anchor = old_anchor = c_descriptor->m_anchor;
 		new_anchor.m_count += more_credits;
 		new_anchor.m_state = PARTIAL;
-		__asm__ __volatile__ ("sfence" : : : "memory");
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
-					    *(uint64_t* volatile)&old_anchor,
-					    *(uint64_t* volatile)&new_anchor));
+		STORE_FENCE;
+	}while(!CompareAndSwap((uint64_t volatile*)&c_descriptor->m_anchor, *(uint64_t*)&old_anchor, *(uint64_t*)&new_anchor));
 	HeapPutPartial(c_descriptor);
 }
 
@@ -500,13 +505,12 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 	do
 	{
 		new_active = old_active = c_heap->m_active;
-		if (!old_active)
-			return NULL;
+		if (!old_active) return NULL;
 		if (get_active_credits(old_active) == 0)
 			new_active = 0; /** only one block left in active superblock **/
 		else
 			--new_active; /** mark allocation of a block from active superblock **/
-	}while(!__sync_bool_compare_and_swap((void** volatile)&c_heap->m_active, old_active, new_active));
+	}while(!CompareAndSwap((uintptr_t volatile*)&c_heap->m_active, old_active, new_active));
 	Descriptor* c_descriptor = (Descriptor*)get_active_pointer(old_active);
 	do
 	{
@@ -527,10 +531,8 @@ static void* AllocateFromActiveSuperblock(ProcessorHeap* c_heap)
 				new_anchor.m_count -= more_credits;
 			}
 		}
-		__asm__ __volatile__ ("sfence" : : : "memory");
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
-					    *(uint64_t* volatile)&old_anchor,
-					    *(uint64_t* volatile)&new_anchor));
+		STORE_FENCE;
+	}while(!CompareAndSwap((uint64_t volatile*)&c_descriptor->m_anchor, *(uint64_t*)&old_anchor, *(uint64_t*)&new_anchor));
 	if (get_active_credits(old_active) == 0 && old_anchor.m_count > 0)
 		UpdateActive(c_heap, c_descriptor, more_credits);
 	*((Descriptor**)address) = c_descriptor;
@@ -547,8 +549,7 @@ static void* AllocateFromPartialSuperBlock(ProcessorHeap* c_heap)
 	void* address;
 	retry:
 	c_descriptor = HeapGetPartial(c_heap);
-	if (!c_descriptor)
-		return NULL;
+	if (!c_descriptor) return NULL;
 	do
 	{
 		new_anchor = old_anchor = c_descriptor->m_anchor;
@@ -561,9 +562,7 @@ static void* AllocateFromPartialSuperBlock(ProcessorHeap* c_heap)
 		more_credits = min(old_anchor.m_count - 1, MAXCREDITS);
 		new_anchor.m_count -= (more_credits + 1);
 		new_anchor.m_state = (more_credits > 0) ? ACTIVE : FULL;
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
-					    *(uint64_t* volatile)&old_anchor,
-					    *(uint64_t* volatile)&new_anchor));
+	}while(!CompareAndSwap((uint64_t volatile*)&c_descriptor->m_anchor, *(uint64_t*)&old_anchor, *(uint64_t*)&new_anchor));
 	do
 	{
 		new_anchor = old_anchor = c_descriptor->m_anchor;
@@ -571,11 +570,8 @@ static void* AllocateFromPartialSuperBlock(ProcessorHeap* c_heap)
 		uint32_t next = *((uintptr_t*)address);
 		new_anchor.m_available = next;
 		++new_anchor.m_tag;
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
-					    *(uint64_t* volatile)&old_anchor,
-					    *(uint64_t* volatile)&new_anchor));
-	if (more_credits > 0)
-		UpdateActive(c_heap, c_descriptor, more_credits);
+	}while(!CompareAndSwap((uint64_t volatile*)&c_descriptor->m_anchor, *(uint64_t*)&old_anchor, *(uint64_t*)&new_anchor));
+	if (more_credits > 0) UpdateActive(c_heap, c_descriptor, more_credits);
 	*((Descriptor**)address) = c_descriptor;
 	return (uintptr_t*)(address + sizeof(Descriptor*));
 
@@ -597,8 +593,8 @@ static void* AllocateFromNewSuperblock(ProcessorHeap* c_heap)
 	c_descriptor->m_anchor.m_count = c_descriptor->m_number_of_blocks - get_active_credits(new_active) - 2;
 	c_descriptor->m_anchor.m_state = ACTIVE; /** install it as the active superblock **/
 
-	__asm__ __volatile__ ("sfence" : : : "memory");
-	if (__sync_bool_compare_and_swap((void** volatile)&c_heap->m_active, NULL, new_active))
+	STORE_FENCE;
+	if (CompareAndSwap((uintptr_t volatile*)&c_heap->m_active, NULL, new_active))
 	{
 		*((Descriptor**)c_descriptor->m_super_block) = c_descriptor;
 		return (uintptr_t*)(c_descriptor->m_super_block + sizeof(Descriptor*));
@@ -617,7 +613,7 @@ static ProcessorHeap* FindHeap(size_t size) /** return the heap associated with 
 {
 	/** We need to fit both the object and the descriptor in a single block **/
 	size += sizeof(Descriptor*);
-	if (size >= AAE_MAX_SMALL_BLOCK_SIZE) return NULL; /** large block **/
+	if (size >= (AAE_SIZE_CLASSES * AAE_GRANULARITY)) return NULL; /** large block **/
 
 	--size; /** an allocation of n * AAE_GRANULARITY should fit in the (n - 1)th size class **/
 	int32_t c_cpu = get_current_cpu(); /** this might change before update but it's rather infrequent **/
@@ -626,23 +622,13 @@ static ProcessorHeap* FindHeap(size_t size) /** return the heap associated with 
 		return NULL; /** fallback to large block allocation **/
 	#endif
 	c_cpu = min(c_cpu, AAE_NUMBER_OF_CPUS - 1);
-	ProcessorHeap* c_heap = *((*(m_heaps + c_cpu)) + (size / AAE_GRANULARITY));
-	if (!c_heap)
-	{
-		c_heap = (ProcessorHeap*)allocate_hp(); /** we used hp allocator because sizeof(HPRecord) = sizeof(ProcessorHeap) **/
-		c_heap->m_active = 0;
-		c_heap->m_partial = NULL;
-		c_heap->m_size_class = ((size / AAE_GRANULARITY) + 1) * AAE_GRANULARITY;
-		*((*(m_heaps + c_cpu)) + (size / AAE_GRANULARITY)) = c_heap;
-	}
-	return c_heap;
+	return &m_heaps[c_cpu][size / AAE_GRANULARITY];
 }
 
 
 void* aae_malloc(size_t size)
 {
-	if (!size)
-		return NULL;
+	if (!size) return NULL;
 	ProcessorHeap *c_heap = FindHeap(size);
 	void* address;
 	if (!c_heap)
@@ -690,17 +676,15 @@ void aae_free(void* start)
 		if (old_anchor.m_count == c_descriptor->m_number_of_blocks - 1)
 		{
 			c_heap = c_descriptor->m_heap;
-			__asm__ __volatile__ ("lfence" : : : "memory");
+			LOAD_FENCE;
 			new_anchor.m_state = EMPTY;
 		}
 		else
 		{
 			new_anchor.m_count++;
 		}
-		__asm__ __volatile__ ("sfence" : : : "memory");
-	}while(!__sync_bool_compare_and_swap((uint64_t* volatile)&c_descriptor->m_anchor,
-					    *(uint64_t* volatile)&old_anchor,
-					    *(uint64_t* volatile)&new_anchor));
+		STORE_FENCE;
+	}while(!CompareAndSwap((uint64_t volatile*)&c_descriptor->m_anchor, *(uint64_t*)&old_anchor, *(uint64_t*)&new_anchor));
 	if (new_anchor.m_state == EMPTY)
 	{
 		os_dealloc(c_descriptor->m_super_block, AAE_SUPERBLOCK_SIZE);
@@ -715,23 +699,26 @@ void aae_free(void* start)
 
 void* aae_realloc(void* start, size_t size)
 {
-	if (!size)
-	{
-		aae_free(start);
-		return NULL;
-	}
-	if (!start)
-		return aae_malloc(size);
+	if (!size) { aae_free(start); return NULL; }
+	if (!start) return aae_malloc(size);
 	size_t old_size;
 	Descriptor* c_descriptor = *((Descriptor**)(uintptr_t*)(start - sizeof(Descriptor*)));
 	if (large_block(c_descriptor))
 		old_size = *((uintptr_t*)(start - 2 * sizeof(Descriptor*)));
 	else
 		old_size = c_descriptor->m_block_size;
-	if (size <= old_size)
-		return start;
+	if (size <= old_size) return start;
 	void* new_start = aae_malloc(size);
 	memcpy(new_start, start, old_size);
 	aae_free(start);
 	return new_start;
+}
+
+
+void* aae_calloc(size_t n, size_t size)
+{
+	size_t total_size = n * size; /** might overflow - too bad **/
+	void* ptr = aae_malloc(total_size);
+	if (!ptr) return NULL;
+	return memset(ptr, 0, total_size);
 }

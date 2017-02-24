@@ -12,4 +12,6 @@ AAE_EXTERN_TOOL void* aae_malloc(aae_size_t numbytes);
 AAE_EXTERN_TOOL void aae_free(void * firstbyte);
 /** allocate a new segment on the heap and copy old data **/
 AAE_EXTERN_TOOL void* aae_realloc(void*firstbyte, aae_size_t numbytes);
+/** allocate a segment on the heap with total_size = n * size, all bytes initialized to 0 **/
+AAE_EXTERN_TOOL void* aae_calloc(size_t n, size_t size);
 #endif

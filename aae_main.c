@@ -1,87 +1,68 @@
-/*
- *  malloc-test
- *  This code is based on the one at: http://www.citi.umich.edu/projects/linux-scalability/reports/malloc.html
- *  Syntax:
- *  malloc-test [ size [ iterations [ thread count ]]]
- *
- */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <unistd.h>
+#include "aae_memory_allocator.h"
+#include "aae_allocators.h"
+#include "string/aae_string.h"
+#include "ctype/aae_ctype.h"
+#include "os/linux/aae_os_functions.h" 
 #include <pthread.h>
-#include "aae_lib_allocator.h"
 
 
-#define USE_AAE 1
-#if USE_AAE == 1
-#define malloc aae_malloc
-#define free aae_free
-#endif
-
-
-static unsigned size = 512;
-static unsigned iteration_count = 1000000;
-static unsigned thread_count = 50;
+#include <X11/Xlib.h>
+#include <GL/glx.h>
 
 
 
-void* run_test(void*)
+extern aae_allocator    aae_mallocator;
+static Display          *m_display;
+static GLint            m_visual_attributes[] = {
+    GLX_X_RENDERABLE,   True, 
+    GLX_DRAWABLE_TYPE,  GLX_WINDOW_BIT,
+    GLX_RENDER_TYPE,    GLX_RGBA_BIT,
+    GLX_X_VISUAL_TYPE,  GLX_TRUE_COLOR,
+    GLX_RED_SIZE,       8,
+    GLX_GREEN_SIZE,     8,
+    GLX_BLUE_SIZE,      8,
+    GLX_ALPHA_SIZE,     8,
+    GLX_DEPTH_SIZE,     24,
+    GLX_STENCIL_SIZE,   8,
+    GLX_DOUBLEBUFFER,   True,
+    None
+};
+static i32          glx_major, glx_minor;
+
+
+
+AAE_EXTERN_TOOL i32 aae_main()
 {
-    unsigned int i;
-    unsigned request_size = size;
-    unsigned total_iterations = iteration_count;
-    struct timeval start, end, elapsed;
+    
+    byte buffer[1000];
+    aae_sprintf(buffer, "%ilu - %c - should also work with %4F ,,,,flo%5fats :))) --- %B", 534, 'Z', -0.052, 15.132, 25);
+    aae_write(stderr, buffer, aae_strlen(buffer));
 
-    /*
-     * Run the real malloc test
-     */
-    gettimeofday(&start, NULL);
-    for (i = 0; i < total_iterations; i++) {
-        void * buf;
-        buf = malloc(request_size);
-        free(buf);
+    m_display = XOpenDisplay(NULL);
+    if (!m_display)
+    {
+        aae_write(stderr, "Could not connect to X server!\n", 31);
+        aae_exit(0);
     }
-    gettimeofday(&end, NULL);
-
-    elapsed.tv_sec = end.tv_sec - start.tv_sec;
-    elapsed.tv_usec = end.tv_usec - start.tv_usec;
-    if (elapsed.tv_usec < 0) {
-        elapsed.tv_sec--;
-        elapsed.tv_usec += 1000000;
+    if (!glXQueryVersion(m_display, &glx_major, &glx_minor) || glx_major < 1 || glx_minor < 3)
+    {
+        aae_write(stderr, "Invalid GLX version!\n", 21);
+        aae_exit(0);
     }
+    i32 m_framebuffer_count;
+    GLXFBConfig* m_framebuffer_config = glXChooseFBConfig(m_display, XDefaultScreen(m_display), m_visual_attributes, &m_framebuffer_count);
+    if (!m_framebuffer_config)
+    {
+        aae_write(stderr, "Failed to retrieve a framebuffer configuarion!\n", 47);
+        aae_exit(0);
+    }
+    for (i32 it = 0; it < m_framebuffer_count; ++it)
+    {
 
-    fprintf(stderr, "Thread %lo elapsed timing: %ld.%06ld seconds for %d requests"
-        " of %d bytes.\n", pthread_self(),
-       	elapsed.tv_sec, elapsed.tv_usec,
-        total_iterations,
-        (int) request_size);
-
-    return NULL;
+    }
+    XFree(m_framebuffer_config);
+    return 0;
 }
 
 
 
-int main(int argc, char *argv[])
-{
-
-    unsigned i;
-    pthread_t thread[thread_count];
-
-    /*
-     * Invoke the tests
-     */
-    fprintf(stderr, "Starting test...\n");
-    for (i=1; i<= thread_count; i++)
-        if (pthread_create(&(thread[i]), NULL, &run_test, NULL))
-            fprintf(stderr, "failed.\n");
-
-    /*
-     * Wait for tests to finish
-     */
-    for (i=1; i<=thread_count; i++)
-        pthread_join(thread[i], NULL);
-
-    exit(0);
-}
