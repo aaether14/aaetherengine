@@ -453,9 +453,8 @@ static void HeapPutPartial(Descriptor* c_descriptor)
 	do
 	{
 		previous = c_descriptor->m_heap->m_partial;
-	}while(!__sync_bool_compare_and_swap((Descriptor** volatile)&c_descriptor->m_heap->m_partial, previous, c_descriptor));
-	if (previous)
-		ListPutPartial(previous, previous->m_heap->m_size_class);
+	}while(!CompareAndSwap((void* volatile*)&c_descriptor->m_heap->m_partial, previous, c_descriptor));
+	if (previous) ListPutPartial(previous, previous->m_heap->m_size_class);
 }
 
 
