@@ -17,8 +17,9 @@ enum __aae__std__files
 #define aae_write write
 AAE_EXTERN_TOOL aae_size_t write(i32, const_byte_ptr, aae_size_t);
 #endif
-/** *Wrapper for linux's sys_exit **/
+/** *Wrapper for libc's sys_exit **/
 #ifndef AAE_EXIT_FUNC
 #define AAE_EXIT_FUNC
+#define aae_exit exit
 AAE_EXTERN_TOOL void aae_exit(i32);
 #endif

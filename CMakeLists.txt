@@ -12,7 +12,7 @@ find_package(aae_utils REQUIRED)
 
 #include directories of the project
 include_directories(${CMAKE_SOURCE_DIR}/aae_utils)
-list(APPEND CMAKE_CXX_FLAGS "-std=c++11 -nostartfiles -fno-exceptions -fno-asynchronous-unwind-tables")
+list(APPEND CMAKE_CXX_FLAGS "-std=c++11 -nostartfiles")
 
 
 
@@ -28,23 +28,19 @@ endif()
 #add sources required for linux build
 if (CMAKE_SYSTEM_NAME STREQUAL Linux)
 aae_add_source(build/license.o)
-if (AAE_CPU_ARCHITECTURE STREQUAL aae_32bit)
-aae_add_source(asm/x86/linux/aae_main.s)
-elseif(AAE_CPU_ARCHITECTURE STREQUAL aae_64bit)
-aae_add_source(asm/x64/linux/aae_main.s)
-endif()
 endif()
 
 
 
 #add all source files here
+aae_add_source(aae_entry.c)
+aae_add_source(aae_utils/linux/platform.c)
 aae_add_source(aae_utils/assert/aae_assert.c)
 aae_add_source(aae_utils/math/aae_math.c)
 aae_add_source(aae_utils/ctype/aae_ctype.c)
 aae_add_source(aae_utils/string/aae_string.c)
 aae_add_source(aae_utils/error/aae_error.c)
 aae_add_source(aae_utils/aae_allocators.c)
-aae_add_source(aae_main.c)
 #-------------------------
 
 
