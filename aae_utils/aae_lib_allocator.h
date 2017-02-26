@@ -1,17 +1,19 @@
 #ifndef AAE_LIB_ALLOCATOR_H
 #define AAE_LIB_ALLOCATOR_H
-
-
 #include "aae_types.h"
-#include "aae_defines.h"
-
+#ifdef AAE_USE_DEFAULT_ALLOCATOR
+#define aae_malloc malloc 
+#define aae_free free
+#define aae_realloc realloc 
+#define aae_calloc calloc 
+#endif
 
 /** allocate numbytes on the heap **/
-AAE_EXTERN_TOOL void* aae_malloc(aae_size_t numbytes);
+extern "C" void* aae_malloc(aae_size_t numbytes);
 /** free memory segment on the heap starting at firstbyte **/
-AAE_EXTERN_TOOL void aae_free(void * firstbyte);
+extern "C" void aae_free(void * firstbyte);
 /** allocate a new segment on the heap and copy old data **/
-AAE_EXTERN_TOOL void* aae_realloc(void*firstbyte, aae_size_t numbytes);
+extern "C" void* aae_realloc(void*firstbyte, aae_size_t numbytes);
 /** allocate a segment on the heap with total_size = n * size, all bytes initialized to 0 **/
-AAE_EXTERN_TOOL void* aae_calloc(size_t n, size_t size);
+extern "C" void* aae_calloc(size_t n, size_t size);
 #endif

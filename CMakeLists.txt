@@ -40,7 +40,6 @@ aae_add_source(aae_utils/math/aae_math.c)
 aae_add_source(aae_utils/ctype/aae_ctype.c)
 aae_add_source(aae_utils/string/aae_string.c)
 aae_add_source(aae_utils/error/aae_error.c)
-aae_add_source(aae_utils/aae_allocators.c)
 #-------------------------
 
 
