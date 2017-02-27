@@ -1,10 +1,11 @@
 #ifndef AAE_TYPES_H
 #define AAE_TYPES_H
-
-
 #include <stdint.h>
 #ifdef AAE_LINUX_PLATFORM
 #include <sys/types.h>
+#ifdef aae_thread_local
+#undef aae_thread_local
+#endif
 #define aae_thread_local __thread
 #endif
 
@@ -30,5 +31,9 @@ typedef char byte;
 typedef char* byte_ptr;
 typedef const char* const_byte_ptr;
 
+
+#ifdef AAE_EOF
+#undef AAE_EOF
+#endif
 #define AAE_EOF -1
 #endif

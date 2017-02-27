@@ -12,6 +12,10 @@ class AAEAllocatorInterface
 };
 
 
+#ifndef AAE_PROVIDE_MEMORY_ARENA_DEFINITION
+#include "aae_new.h"
+extern AAEAllocatorInterface* aae_mallocator;
+#endif
 #ifdef AAE_PROVIDE_MEMORY_ARENA_DEFINITION
 template <class AllocationPolicy, class ThreadPolicy, class BoundsCheckingPolicy, class MemoryTrackingPolicy, class MemoryTaggingPolicy>
 class MemoryArena : public AAEAllocatorInterface

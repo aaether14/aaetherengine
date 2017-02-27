@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h> /** qsort **/
 #include <string.h> /** memcpy **/
-#include <boost/preprocessor/repetition/enum.hpp>
 
 
 #ifndef NULL
@@ -28,7 +27,7 @@ int32_t sched_getcpu(void);
 #define get_current_cpu GetCurrentProcessorNumber
 #endif
 #ifndef AAE_SIZE_CLASSES
-#define AAE_SIZE_CLASSES 256 /** can't be bigger than 256 **/
+#define AAE_SIZE_CLASSES 256 /** can't be bigger than 512 **/
 #endif
 #ifndef AAE_GRANULARITY
 #define AAE_GRANULARITY 8
@@ -318,12 +317,11 @@ struct __processor_heap
 	uintptr_t volatile m_active;
 	Descriptor* volatile m_partial;
 };
-
-
-#define ProcessorHeapStaticInitialize(z, n, data) {((n+1)*AAE_GRANULARITY), 0, NULL}
-#define PerCPUProcessorHeapStaticInitialize { BOOST_PP_ENUM(AAE_SIZE_CLASSES, ProcessorHeapStaticInitialize, ~) }
-#define PerCPUProcessorHeapStaticInitializeMacro(z, n, text) PerCPUProcessorHeapStaticInitialize
-static ProcessorHeap m_heaps[AAE_NUMBER_OF_CPUS][AAE_SIZE_CLASSES] = {BOOST_PP_ENUM(AAE_NUMBER_OF_CPUS, PerCPUProcessorHeapStaticInitializeMacro, ~)};
+#include "aae_pp_enum.h"
+#define ProcessorHeapStaticInitialize(n) { ((n + 1) * AAE_GRANULARITY), 0, NULL }
+#define PerCPUProcessorHeapStaticInitialize { AAE_ENUM(AAE_SIZE_CLASSES)(ProcessorHeapStaticInitialize) }
+#define PerCPUProcessorHeapStaticInitializeMacro(n) PerCPUProcessorHeapStaticInitialize
+static ProcessorHeap m_heaps[AAE_NUMBER_OF_CPUS][AAE_SIZE_CLASSES] = { AAE_ENUM(AAE_NUMBER_OF_CPUS)(PerCPUProcessorHeapStaticInitializeMacro) };
 
 
 static thread_local HPRecordList m_retired_descriptor_list = {NULL, 0};

@@ -1,7 +1,7 @@
+#ifndef AAE_OS_FUNCTIONS_H
+#define AAE_OS_FUNCTIONS_H
 #include "aae_defines.h"
 #include "aae_types.h"
-
-
 #ifdef AAE_LINUX_PLATFORM
 enum __aae__std__files
 {
@@ -10,16 +10,16 @@ enum __aae__std__files
 	stderr
 };
 #endif
-
 /** *Wrapper for linux's sys_write **/
-#ifndef AAE_WRITE_FUNC
-#define AAE_WRITE_FUNC
-#define aae_write write
-AAE_EXTERN_TOOL aae_size_t write(i32, const_byte_ptr, aae_size_t);
+#ifdef aae_write
+#undef aae_write
 #endif
+#define aae_write write
+AAE_EXTERN_TOOL aae_size_t aae_write(i32, const_byte_ptr, aae_size_t);
 /** *Wrapper for libc's sys_exit **/
-#ifndef AAE_EXIT_FUNC
-#define AAE_EXIT_FUNC
+#ifdef aae_exit
+#undef aae_exit
+#endif
 #define aae_exit exit
 AAE_EXTERN_TOOL void aae_exit(i32);
 #endif
