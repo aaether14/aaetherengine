@@ -1,7 +1,7 @@
 #ifndef AAE_OS_FUNCTIONS_H
 #define AAE_OS_FUNCTIONS_H
-#include "aae_defines.h"
-#include "aae_types.h"
+#include "misc/aae_defines.h"
+#include "misc/aae_types.h"
 #ifdef AAE_LINUX_PLATFORM
 enum __aae__std__files
 {

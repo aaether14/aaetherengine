@@ -2,7 +2,7 @@
 #define AAE_STRING_H
 
 
-#include "aae_types.h"
+#include "misc/aae_types.h"
 #include <stdarg.h>
 /** strcpy implementation **/
 byte_ptr aae_strcpy(byte_ptr dst, const_byte_ptr src);

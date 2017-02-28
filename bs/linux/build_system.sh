@@ -5,11 +5,13 @@
 #$4 should be set to --USE_VALGRIND for obvious reasons
 
 
-	#bembed license into executable
+	#embed license into executable
 	if [ "${3:-aae_32bit}" == "aae_32bit" ]; then
 	objcopy -I binary -O elf32-i386 -B i386 license build/license.o
+	#./bs/linux/build_library.sh aae_allocator_lib -m32 -DAAE_32BIT_BUILD -DAAE_LINUX_PLATFORM -DAAE_USE_DEFAULT_NAMES
 	else
 	objcopy -I binary -O elf64-x86-64 -B i386:x86-64 license build/license.o
+	#./bs/linux/build_library.sh aae_allocator_lib -m64 -DAAE_64BIT_BUILD -DAAE_LINUX_PLATFORM -DAAE_USE_DEFAULT_NAMES
 	fi
 
 

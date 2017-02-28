@@ -1,6 +1,4 @@
 #include "aae_math.h"
-
-
 u64 aae_pow10(u64 power)
 {
 	static const aae_thread_local r64 m_pow10_arr[17] = {

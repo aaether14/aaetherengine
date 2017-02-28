@@ -1,5 +1,5 @@
 #define AAE_PROVIDE_MEMORY_ARENA_DEFINITION
-#include "aae_memory.h"
+#include "misc/aae_memory.h"
 #ifdef AAE_LINUX_PLATFORM
 extern "C++" inline void* operator new(aae_size_t, void* __p) { return __p; }
 #endif

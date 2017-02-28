@@ -1,7 +1,7 @@
 #include "aae_string.h"
-#include "math/aae_math.h"
 #include "ctype/aae_ctype.h"
-#include "aae_defines.h"
+#include "math/aae_math.h"
+#include "misc/aae_defines.h"
 
 
 /** strcpy implementation **/

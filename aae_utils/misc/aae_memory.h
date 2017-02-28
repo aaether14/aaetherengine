@@ -1,6 +1,6 @@
 #ifndef AAE_ALLOCATORS_H
 #define AAE_ALLOCATORS_H
-#include "aae_lib_allocator.h"
+#include "../lib/aae_lib_allocator.h"
 
 
 class AAEAllocatorInterface

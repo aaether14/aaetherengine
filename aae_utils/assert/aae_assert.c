@@ -1,10 +1,7 @@
-#include "aae_types.h"
-#include "aae_defines.h"
-
-
+#include "misc/aae_types.h"
 #ifdef AAE_LINUX_PLATFORM
-AAE_EXTERN_TOOL void exit(i32 exit_code);
-AAE_EXTERN_TOOL void write(i32 fd, const_byte_ptr buffer, aae_size_t length);
+extern "C" void exit(i32 exit_code);
+extern "C" void write(i32 fd, const_byte_ptr buffer, aae_size_t length);
 #endif
 
 

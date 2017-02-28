@@ -1,4 +1,4 @@
-#include "aae_memory.h"
+#include "misc/aae_memory.h"
 #include "string/aae_string.h"
 #include "ctype/aae_ctype.h"
 #include "../os/linux/aae_os_functions.h" 
@@ -7,6 +7,8 @@
 i32 aae_main()
 {
 	i32* xxx = AAE_NEW_ARRAY(i32, 9, aae_mallocator);
+        xxx[5] = 25;
+        xxx[6] = 30;
         i32* yyy = AAE_NEW_ARRAY(i32, 9, aae_mallocator);
         i64* ttt = AAE_ALIGNED_NEW(i64, 256, aae_mallocator);
         byte* buffer = AAE_NEW_ARRAY(byte, 1000, aae_mallocator);
