@@ -22,14 +22,11 @@ Features:
 
 /** linked list for loop **/
 #define aae_LinkedListForEach(list) for (list->m_it = list->m_first; list->m_it != AAE_NULL; list->m_it = list->m_it->m_next)
-
-
 enum AAE_LINKED_LIST_ERROR_CODES
 {
 	linked_list_no_error,
 	linked_list_could_not_allocate_new_node
 };
-
 #endif /** AAE_LINKED_LIST_DEF **/
 
 

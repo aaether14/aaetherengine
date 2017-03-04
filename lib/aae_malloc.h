@@ -1,5 +1,5 @@
-#ifndef AAE_LIB_ALLOCATOR_H
-#define AAE_LIB_ALLOCATOR_H
+#ifndef AAE_MALLOC_H
+#define AAE_MALLOC_H
 #include "misc/aae_types.h"
 #define aae_malloc malloc 
 #define aae_free free

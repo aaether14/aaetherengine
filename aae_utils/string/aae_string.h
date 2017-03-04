@@ -4,6 +4,8 @@
 
 #include "misc/aae_types.h"
 #include <stdarg.h>
+/** memcpy implementation**/
+byte_ptr aae_memcpy(byte_ptr dst, const_byte_ptr src, aae_size_t n);
 /** strcpy implementation **/
 byte_ptr aae_strcpy(byte_ptr dst, const_byte_ptr src);
 /** strcat implementation **/

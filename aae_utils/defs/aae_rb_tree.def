@@ -275,7 +275,7 @@ NODE* __rb_tree_previous(TREE* tree, NODE* x)
 
 
 template <typename TREE>
-typename TREE::__node* __rb_tree_first(TREE * tree)
+typename TREE::__node* __rb_tree_first(TREE* tree)
 {
 
 	if (tree->m_root == tree->m_nil)
@@ -289,7 +289,7 @@ typename TREE::__node* __rb_tree_first(TREE * tree)
 
 
 template <typename TREE>
-typename TREE::__node* __rb_tree_last(TREE * tree)
+typename TREE::__node* __rb_tree_last(TREE* tree)
 {
 
 	if (tree->m_root == tree->m_nil)
@@ -395,7 +395,7 @@ struct AAE_RB_TREE_NAME
 
 
 		aae_set_error(rb_tree_no_error); /** no error at first **/
-		__node * new_node = __internal_insert_bst(m_nil, m_root, key); /** attempt to insert a new node **/
+		__node* new_node = __internal_insert_bst(m_nil, m_root, key); /** attempt to insert a new node **/
 		if (!new_node) return; /** give up balancing the tree on invalid insertion **/
 		#ifdef AAE_RB_TREE_VALUE_TYPE
 		new_node->value = value; /** set the value of the new node if user requested so **/
@@ -419,8 +419,8 @@ struct AAE_RB_TREE_NAME
 		if (node_to_delete == m_nil)
 			return;
 
-		__node * y = (node_to_delete->left == m_nil || node_to_delete->right == m_nil) ? node_to_delete : __rb_tree_next(this, node_to_delete);
-		__node * x = (y->left == m_nil) ? y->right : y->left;
+		__node* y = (node_to_delete->left == m_nil || node_to_delete->right == m_nil) ? node_to_delete : __rb_tree_next(this, node_to_delete);
+		__node* x = (y->left == m_nil) ? y->right : y->left;
 		x->parent = y->parent;
 		if (x->parent == m_root)
 		{

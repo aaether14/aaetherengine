@@ -38,7 +38,7 @@ static inline T* aae_new_array(Arena& arena, aae_size_t n_instances)
 
 
 template <class Arena>
-static inline void* aae_aligned_new(aae_size_t size, aae_size_t alignment, Arena& arena)
+static inline void* aae_aligned_new(aae_size_t size, aae_size_t alignment, Arena& arena) /** aligned to a power of 2 **/
 {
 	aae_size_t offset = alignment - 1 + sizeof(void*);
 	void* address = arena->Allocate(size + offset);
