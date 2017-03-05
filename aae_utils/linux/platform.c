@@ -8,9 +8,9 @@ i32 aae_main()
 {
         try
         {
-                aae::filestream<512> cout(1, AAE_WRITE_ONLY);
-                byte b;
-                cout<<'l'<<'o'<<'l'<<" "<<"is the new "<< "shit "<<25.140<<" "<<aae::float_precision(2)<<3.1423210<<" --- " << 25 << aae::flush;
+                aae::filesource fsource("text", O_WRONLY | O_TRUNC);
+                aae::filestream<aae::filesource> cout(fsource);
+                cout<<'l'<<" "<<3.14<<"---"<<i16(-25);
         }
         catch(const_byte_ptr exception)
         {

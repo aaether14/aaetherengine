@@ -1,7 +1,6 @@
 #include "aae_string.h"
 #include "ctype/aae_ctype.h"
 #include "math/aae_math.h"
-#include "misc/aae_defines.h"
 
 
 /** memcpy implementation **/
@@ -166,7 +165,7 @@ void aae_vsprintf(byte_ptr buf, const_byte_ptr fmt, va_list args)
 		if (ch == '%')
 		{
 			t_pr = 0;
-			t_string = AAE_NULL;
+			t_string = nullptr;
 			while(*fmt && aae_isdigit(*fmt))
 			{
 				t_pr *= 10;

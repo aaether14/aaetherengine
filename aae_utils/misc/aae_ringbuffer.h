@@ -19,10 +19,10 @@ class ringbuffer
 		m_buffer(nullptr),
 		m_head(0), 
 		m_tail(0),
-		m_size(size),
+		m_size(size + 1), /** a size of n + 1 is a capacity of n **/
 		m_allocator(allocator)
 	{
-		if (!allocator) throw("null allocator reference in ring buffer!");
+		if (!m_allocator) throw("null allocator reference in ring buffer!");
 		if (m_size)
 		{
 			m_buffer = AAE_NEW_ARRAY(T, m_size, m_allocator);
