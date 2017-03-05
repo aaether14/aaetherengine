@@ -26,19 +26,38 @@ class filesource
 	#if defined(AAE_LINUX_PLATFORM)
 	using open_mode_t = int;
 	using file_handle_t = int;
-	static const open_mode_t read_only_mode = O_RDONLY;
-	static const open_mode_t write_only_mode = O_WRONLY | O_TRUNC;
 	#elif defined(AAE_WINDOWS_PLATOFRM)
 	using open_mode_t = UINT;
 	using file_handle_t HFILE;
-	static const open_mode_t read_only_mode = OF_READ;
-	static const open_mode_t write_only_mode = O_WRITE | OF_CREATE;
 	#endif
 	file_handle_t m_handle;
 	open_mode_t m_open_mode;
 	bool m_has_opened_file;
 	bool m_is_error = false;
 	public:
+	#if defined(AAE_LINUX_PLATFORM)
+	static const open_mode_t read_only_mode = O_RDONLY;
+	static const open_mode_t write_only_mode = O_WRONLY | O_TRUNC;
+	#elif defined(AAE_WINDOWS_PLATOFRM)
+	static const open_mode_t read_only_mode = OF_READ;
+	static const open_mode_t write_only_mode = O_WRITE | OF_CREATE;
+	#endif
+	filesource(filesource& other)
+	{
+		m_handle = other.m_handle;
+		m_open_mode = other.m_open_mode;
+		m_is_error = other.m_is_error; 
+		m_has_opened_file = other.m_has_opened_file;
+		other.m_has_opened_file = false;
+	}
+	filesource(filesource&& other)
+	{
+		m_handle = other.m_handle;
+		m_open_mode = other.m_open_mode;
+		m_is_error = other.m_is_error; 
+		m_has_opened_file = other.m_has_opened_file;
+		other.m_has_opened_file = false;
+	}
 	filesource(const_byte_ptr filename, open_mode_t mode) : m_open_mode(mode)
 	{
 		#if defined(AAE_LINUX_PLATFORM)
@@ -48,6 +67,7 @@ class filesource
 		#endif
 	}
 	filesource(file_handle_t handle, open_mode_t mode) :
+		m_handle(handle),
 		m_open_mode(mode), 
 		m_has_opened_file(false) {}
 	virtual ~filesource()
@@ -88,7 +108,10 @@ class filestream : public ringbuffer<byte>
 	FileSourcePolicy m_file_source_policy;
 	u64 m_float_precision = 3;
 	public:
-	filestream(const FileSourcePolicy& file_source_policy) : 
+	filestream(FileSourcePolicy& file_source_policy) : 
+		ringbuffer<byte>(511, aae_mallocator),
+		m_file_source_policy(file_source_policy) {}
+	filestream(FileSourcePolicy&& file_source_policy) : 
 		ringbuffer<byte>(511, aae_mallocator),
 		m_file_source_policy(file_source_policy) {}
 	virtual ~filestream()
