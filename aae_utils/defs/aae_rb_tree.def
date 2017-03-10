@@ -23,9 +23,7 @@ Features:
 
 #ifndef AAE_RB_TREE_DEF
 #define AAE_RB_TREE_DEF
-#include "aae_defines.h"
-#include "aae_types.h"
-#include "aae_memory_allocator.h"
+#include "misc/aae_new.h"
 #include "error/aae_error.h"
 
 

@@ -1,0 +1,7 @@
+{
+        "version": "0.1.0",
+        "command": "./bs/linux/build_system.sh",
+        "isShellCommand": true,
+        "args": ["aaetherengine",  "Release",  "aae_64bit", "Yes"],
+        "showOutput": "always"
+}
