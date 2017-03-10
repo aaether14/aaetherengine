@@ -2,7 +2,6 @@
 #$1 is the name of the executable 
 #$2 is the build type (Debug / Release)
 #$3 is the cpu architecture (aae_32bit / aae_64bit)
-#$4 should be set to --USE_VALGRIND for obvious reasons
 
 
 	#embed license into executable
@@ -22,5 +21,6 @@
 	cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=${2:-Release} -DAAE_CPU_ARCHITECTURE=${3:-aae_32bit} -DAAE_MULTITHREADED=${4:-No} ../
 	printf "Creating binaries...\n"
 	make
+	if [ "${2:-Release}" == "Release" ]; then
 	strip $1
-	time ./$1
+	fi

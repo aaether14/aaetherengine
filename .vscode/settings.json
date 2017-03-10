@@ -1,0 +1,8 @@
+{
+"editor.tabSize": 8,
+"files.associations": {
+        "*.c": "cpp",
+        "*.def": "cpp"
+},
+"C_Cpp.autocomplete": "Disabled"
+}

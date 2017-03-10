@@ -52,7 +52,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 #things to do if platform is linux
 if(CMAKE_SYSTEM_NAME STREQUAL Linux)
-find_library(AAE_ALLOCATOR_LIB NAMES libaae_allocator_lib.so PATHS ${CMAKE_BINARY_DIR}/lib)
+find_library(AAE_ALLOCATOR_LIB NAMES libaae_malloc.so PATHS ${CMAKE_BINARY_DIR}/lib)
 if (AAE_MULTITHREADED STREQUAL Yes)
 find_package(Threads)
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})

@@ -1,0 +1,38 @@
+{
+        "version": "0.2.0",
+        "configurations": [
+                {
+                        "name": "C++ Launch",
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "program": "${workspaceRoot}/build/aaetherengine",
+                        "args": [],
+                        "stopAtEntry": false,
+                        "cwd": "${workspaceRoot}",
+                        "environment": [],
+                        "externalConsole": true,
+                        "linux": {
+                                "MIMode": "gdb",
+                                "setupCommands": [
+                                        {
+                                                "description": "run",
+                                                "text": "run",
+                                                "ignoreFailures": true
+                                        }
+                                ]
+                        },
+                        "osx": {
+                                "MIMode": "lldb"
+                        },
+                        "windows": {
+                                "MIMode": "gdb",
+                                "setupCommands": [
+                                        {
+                                                "description": "run",
+                                                "text": "run",
+                                                "ignoreFailures": true
+                                        }
+                                ]
+                        }
+                }]
+}

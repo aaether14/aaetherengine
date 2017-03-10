@@ -8,10 +8,11 @@ i32 aae_main()
 {
         try
         {
-                aae::filesource test1(1, aae::filesource::write_only_mode);
-                aae::filesource test2 = aae::move(test1);
-                aae::filestream<aae::filesource> cout(test2);
-                cout << "Hello World!" << " " << 3.15 << " " << -255 << aae::flush;
+                using namespace::aae;
+                filesource test1(1, filesource::write_only_mode);
+                filesource test2 = aae::move(test1);
+                filestream<filesource> cout(test2);
+                cout << "Hello World!" << " " << 3.14 << " " << -25 << aae::flush;
         }
         catch(const_byte_ptr exception)
         {

@@ -15,8 +15,7 @@ Features:
 
 #ifndef AAE_LINKED_LIST_DEF
 #define AAE_LINKED_LIST_DEF
-#include "aae_defines.h"
-#include "aae_memory_allocator.h"
+#include "misc/aae_new.h"
 #include "error/aae_error.h"
 
 
