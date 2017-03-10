@@ -17,7 +17,7 @@ class AAEAllocatorInterface
 extern AAEAllocatorInterface* aae_mallocator;
 #endif
 #ifdef AAE_PROVIDE_MEMORY_ARENA_DEFINITION
-template <class AllocationPolicy, class ThreadPolicy, class BoundsCheckingPolicy, class MemoryTrackingPolicy, class MemoryTaggingPolicy>
+template <typename AllocationPolicy, typename ThreadPolicy, typename BoundsCheckingPolicy, typename MemoryTrackingPolicy, typename MemoryTaggingPolicy>
 class MemoryArena : public AAEAllocatorInterface
 {
 
@@ -98,7 +98,7 @@ class SingleThreadedPolicy
 	inline void enter() const {}
 	inline void leave() const {}
 };
-typedef MemoryArena<MallocAllocationPolicy, SingleThreadedPolicy, NoBoundsCheckingPolicy, NoMemoryTrackingPolicy, NoMemoryTaggingPolicy> DefaultMemoryArenaType;
+using DefaultMemoryArenaType = MemoryArena<MallocAllocationPolicy, SingleThreadedPolicy, NoBoundsCheckingPolicy, NoMemoryTrackingPolicy, NoMemoryTaggingPolicy>;
 #undef AAE_PROVIDE_MEMORY_ARENA_DEFINITION
 #endif
 #endif

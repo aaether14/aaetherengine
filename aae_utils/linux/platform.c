@@ -8,8 +8,10 @@ i32 aae_main()
 {
         try
         {
-                aae::filestream<aae::filesource> cout(aae::filesource(1, aae::filesource::write_only_mode));
-                cout<<'l'<<" 00llasdas"<<3.14<<"---"<<i16(-25);
+                aae::filesource test1(1, aae::filesource::write_only_mode);
+                aae::filesource test2 = aae::move(test1);
+                aae::filestream<aae::filesource> cout(test2);
+                cout << "Hello World!" << " " << 3.15 << " " << -25 << aae::flush;
         }
         catch(const_byte_ptr exception)
         {
