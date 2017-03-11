@@ -2,6 +2,43 @@
         "version": "0.1.0",
         "command": "bash",
         "isShellCommand": true,
-        "args": ["-c", "./bs/linux/build_system.sh aaetherengine Debug aae_64bit Yes"],
-        "showOutput": "always"
+        "args": ["-c"],
+        "showOutput": "always",
+        "suppressTaskName": true,
+        "tasks": [
+                {
+                        "taskName": "Debug64",
+                        "args": ["./bs/linux/build_system.sh aaetherengine Debug aae_64bit No"]
+                },
+                {
+                        "isBuildCommand": true,
+                        "taskName": "Debug64MT",
+                        "args": ["./bs/linux/build_system.sh aaetherengine Debug aae_64bit Yes"]
+                },
+                {
+                        "taskName": "Release64",
+                        "args": ["./bs/linux/build_system.sh aaetherengine Release aae_64bit No"]
+                },
+                {
+                        "taskName": "Release64MT",
+                        "args": ["./bs/linux/build_system.sh aaetherengine Release aae_64bit Yes"]
+                },
+                {
+                        "taskName": "Debug32",
+                        "args": ["./bs/linux/build_system.sh aaetherengine Debug aae_32bit No"]
+                },
+                {
+                        "taskName": "Debug32MT",
+                        "args": ["./bs/linux/build_system.sh aaetherengine Debug aae_32bit Yes"]
+                },
+                {
+                        "taskName": "Release32",
+                        "args": ["./bs/linux/build_system.sh aaetherengine Release aae_32bit No"]
+                },
+                {
+                        "taskName": "Release32MT",
+                        "args": ["./bs/linux/build_system.sh aaetherengine Release aae_32bit Yes"]
+                }
+
+        ]
 }

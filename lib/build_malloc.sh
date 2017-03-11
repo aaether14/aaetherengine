@@ -1,4 +1,4 @@
-#LIBRARY BUILDING MACRO
+#MALLOC BUILD SYSTEM by Aaether - linux
 #$1 is the name of the library
 #$2 shold be the the gcc flag for cpu architecture (-m32 / -m64)
 
