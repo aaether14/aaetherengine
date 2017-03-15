@@ -2,7 +2,9 @@
 "editor.tabSize": 8,
 "files.associations": {
         "*.c": "cpp",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "string": "cpp",
+        "slist": "cpp"
 },
 "C_Cpp.autocomplete": "Disabled"
 }

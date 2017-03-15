@@ -62,7 +62,7 @@ class filesource
 	filesource(file_handle_t handle, open_mode_t mode) :
 		m_handle(handle),
 		m_open_mode(mode) {}
-	virtual ~filesource()
+	~filesource()
 	{
 		#if defined(AAE_LINUX_PLATFORM)
 		if (m_has_opened_file) if (close(m_handle) == -1) { m_is_error = true; throw("Error while closing file!"); }
@@ -72,7 +72,7 @@ class filesource
 	inline const bool& error() const { return m_is_error; }
 	inline bool can_read() const { return m_open_mode == read_only_mode; }
 	inline bool can_write() const { return m_open_mode == write_only_mode; }
-	virtual inline aae_size_t write(const_byte_ptr buffer, const aae_size_t& write_size)
+	inline aae_size_t write(const_byte_ptr buffer, const aae_size_t& write_size)
 	{
 		#if defined(AAE_LINUX_PLATFORM)
 		aae_ssize_t&& result = ::write(m_handle, buffer, write_size);
@@ -81,7 +81,7 @@ class filesource
 		#elif defined(AAE_WINDOWS_PLATOFRM)
 		#endif
 	}
-	virtual inline aae_size_t read(byte_ptr buffer, const aae_size_t& read_size)
+	inline aae_size_t read(byte_ptr buffer, const aae_size_t& read_size)
 	{
 		#if defined(AAE_LINUX_PLATFORM)
 		aae_ssize_t&& result = ::read(m_handle, buffer, read_size);
@@ -110,8 +110,7 @@ class filestream : public ringbuffer<byte>
 	SourcePolicy m_source_policy;
 	float_precision m_float_precision = float_precision(3);
 	public:
-	filestream(SourcePolicy& source_policy) : ringbuffer<byte>(511, aae_mallocator), m_source_policy(aae::move(source_policy)) {}
-	filestream(SourcePolicy&& source_policy) : ringbuffer<byte>(511, aae_mallocator), m_source_policy(aae::move(source_policy)) {}
+	filestream(SourcePolicy&& source_policy) : ringbuffer<byte>(511, aae::mallocator), m_source_policy(aae::move(source_policy)) {}
 	virtual ~filestream()
 	{
 		if (!m_source_policy.error()) flush();
@@ -131,7 +130,7 @@ class filestream : public ringbuffer<byte>
 		if (!m_source_policy.can_write()) return false; 
 		return overflow(); 
 	}
-	inline float_precision& get_float_precision() { return m_float_precision; } 
+	inline float_precision& precision() { return m_float_precision; } 
 	protected:
 	virtual bool underflow()
 	{
@@ -146,11 +145,11 @@ class filestream : public ringbuffer<byte>
 		{
 			aae_size_t&& flush_size = get_size() + get_head() - get_tail();
 			aae_size_t&& first_half = get_size() - get_tail();
-			byte_ptr temp = (byte_ptr)aae_mallocator->Allocate(flush_size);
+			byte_ptr temp = (byte_ptr)aae::mallocator.Allocate(flush_size);
 			aae_memcpy(temp, get_buffer() + get_tail(), first_half);
 			aae_memcpy(temp + first_half, get_buffer(), get_head());
 			m_source_policy.write(temp, flush_size);
-			aae_mallocator->Deallocate(temp);
+			aae::mallocator.Deallocate(temp);
 		}
 		else
 		{
@@ -164,29 +163,30 @@ class filestream : public ringbuffer<byte>
 
 
 template <typename FileStream>
-inline FileStream& operator<<(FileStream& stream, const stream_flush&) 
+inline FileStream& operator<<(FileStream& lhs, const stream_flush&) 
 { 
-	stream.flush(); 
-	return stream; 
+	lhs.flush(); 
+	return lhs; 
 }
 template <typename FileStream>
-inline FileStream& operator<<(FileStream& stream, const float_precision& precision)
+inline FileStream& operator<<(FileStream& lhs, const float_precision& rhs)
 { 
- 	stream.get_float_precision() = precision;
- 	return stream; 
+ 	lhs.precision() = rhs;
+ 	return lhs; 
 }
 template <typename FileStream>
-inline FileStream& operator<<(FileStream& stream, const byte& character) 
+inline FileStream& operator<<(FileStream& lhs, const byte& rhs) 
 { 
-	stream.push(character); 
-	return stream; 
+	lhs.push(rhs); 
+	return lhs; 
 }
 template <typename FileStream>
-inline FileStream& operator<<(FileStream& stream, const_byte_ptr string) 
+inline FileStream& operator<<(FileStream& lhs, const_byte_ptr rhs) 
 {
-	for (aae_size_t it = 0; it < aae_strlen(string); ++it)
-		stream.push(string[it]); 
-	return stream;
+	aae_size_t rhs_size = aae_strlen(rhs);
+	for (aae_size_t it = 0; it < rhs_size; ++it)
+		lhs.push(rhs[it]); 
+	return lhs;
 }
 template<typename FileStream, typename T, typename enable_if<is_signed<T>::value, i32>::type = 0>
 inline FileStream& operator<<(FileStream& stream, const T& integer)
@@ -207,7 +207,7 @@ inline FileStream& operator<<(FileStream& stream, const T& unsigned_integer)
 template <typename FileStream, typename T, typename enable_if<is_real<T>::value, i32>::type = 0>
 inline FileStream& operator<<(FileStream& stream, const T& real_value)
 {	
-	byte_ptr string = aae_dtoa(real_value, stream.get_float_precision().get());
+	byte_ptr string = aae_dtoa(real_value, stream.precision().get());
 	for (aae_size_t it = 0; it < aae_strlen(string); ++it)
 		stream.push(string[it]); 
 	return stream;
